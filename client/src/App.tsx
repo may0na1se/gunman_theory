@@ -8,7 +8,8 @@ import Chat from './components/Chat';
 
 // 환경 변수나 로컬 스토리지 등에 따라 URL 분기 가능
 // 우선 로컬 개발환경 서버 주소 적용 (외부 접속 테스트를 위해 IP로 변경)
-const SOCKET_URL = 'http://70.12.247.186:4000';
+// const SOCKET_URL = 'http://70.12.247.186:4000';
+const SOCKET_URL = 'https://gunman-theory.onrender.com'
 
 function App() {
   const { setSocket, setIsConnected, roomState, setRoomState, setRoomList } = useGameStore();
