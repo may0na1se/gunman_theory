@@ -11,7 +11,6 @@ export default function InGame() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
     const username = useGameStore(state => state.username);
-    const setRoomState = useGameStore(state => state.setRoomState);
 
     // 최종 순위 정보 상태
     const [rankings, setRankings] = useState<Player[] | null>(null);
