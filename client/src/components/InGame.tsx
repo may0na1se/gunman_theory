@@ -6,6 +6,7 @@ import targetPng from '../assets/target.png';
 import firedSfx from '../assets/fired.mp3';
 import failedSfx from '../assets/failed.mp3';
 import clangSfx from '../assets/clang.mp3';
+import aceOfSpades from '../assets/ace-of-spades.jpg';
 
 export default function InGame() {
     const socket = useGameStore(state => state.socket);
@@ -14,6 +15,9 @@ export default function InGame() {
 
     // 최종 순위 정보 상태
     const [rankings, setRankings] = useState<Player[] | null>(null);
+
+    // 최근 사용된 카드 정보 (애니메이션 모달용)
+    const [lastUsedCard, setLastUsedCard] = useState<{ playerName: string, cardName: ActiveCardType, timestamp: number } | null>(null);
 
     // 카드 타겟 지정 모드 여부
     const [activeCardMode, setActiveCardMode] = useState<ActiveCardType | null>(null);
@@ -76,9 +80,25 @@ export default function InGame() {
             setRankings(rankings);
         });
 
+        // 카드 사용 브로드캐스트 수신 (화면 중앙 우측 카드 플립 연출)
+        socket.on('used_card_broadcast', ({ playerName, cardName }) => {
+            setLastUsedCard({ playerName, cardName, timestamp: Date.now() });
+
+            // 4초 후 자동 숨김
+            setTimeout(() => {
+                setLastUsedCard(prev => {
+                    if (prev && Date.now() - prev.timestamp >= 3900) {
+                        return null;
+                    }
+                    return prev;
+                });
+            }, 4000);
+        });
+
         return () => {
             socket.off('global_message', handleGlobalMessage);
             socket.off('game_over');
+            socket.off('used_card_broadcast');
         };
     }, [socket]);
 
@@ -302,19 +322,19 @@ export default function InGame() {
                 <p className="text-sm text-gray-400">이번 베팅금: <span className="text-white font-bold">${roomState.currentBet}</span></p>
             </div>
 
-            {/* 우측 중단: 게임 진행 설명 패널 */}
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-72 bg-dark-800/80 backdrop-blur-md p-5 rounded-xl border border-gray-700 shadow-2xl flex flex-col gap-3 pointer-events-none">
-                <h3 className="text-primary-500 font-bold border-b border-gray-600 pb-2 mb-1 flex items-center gap-2">
-                    <AlertTriangle size={18} /> 게임 가이드
+            {/* 우측 상단: 게임 진행 설명 패널 (크기 축소 및 위치 이동) */}
+            <div className="absolute right-4 top-4 z-20 w-56 bg-dark-800/60 backdrop-blur-sm p-3 rounded-lg border border-gray-700/50 shadow-lg flex flex-col gap-2 pointer-events-none opacity-80 hover:opacity-100 transition-opacity">
+                <h3 className="text-primary-500 font-bold border-b border-gray-600/50 pb-1 mb-1 flex items-center gap-1 text-sm">
+                    <AlertTriangle size={14} /> 가이드
                 </h3>
-                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-                    • 본인의 턴에 <span className="text-red-400 font-bold">사격</span> 또는 <span className="text-blue-400 font-bold">카드를 받으면</span> 턴이 넘어갑니다.
+                <p className="text-gray-300 text-xs leading-snug">
+                    • <span className="text-red-400">사격</span>/ <span className="text-blue-400">카드받기</span> ➔ 턴 종료
                 </p>
-                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-                    • <span className="text-yellow-400 font-bold">액티브 카드 사용</span>은 턴을 넘기지 않습니다.
+                <p className="text-gray-300 text-xs leading-snug">
+                    • <span className="text-yellow-400">액티브 사용</span> ➔ 턴 유지
                 </p>
-                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-                    • <span className="text-green-400 font-bold">사격 확률 조정</span>은 패시브 카드를 통해 언제든지 바꿀 수 있습니다.
+                <p className="text-gray-300 text-xs leading-snug">
+                    • <span className="text-green-400">패시브 변경</span> ➔ 언제든 조작
                 </p>
             </div>
 
@@ -328,22 +348,57 @@ export default function InGame() {
                     )}
                 </div>
 
-                {/* 중앙 Pot (판돈) - 애니메이션 부여 */}
-                <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                    className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center justify-center pointer-events-none"
-                >
-                    <div className="w-32 h-32 rounded-full border-4 border-yellow-500 bg-dark-800 flex items-center justify-center shadow-[0_0_30px_rgba(234,179,8,0.3)] backdrop-blur-sm">
-                        <div className="text-center">
-                            <span className="text-gray-400 text-sm font-bold tracking-widest uppercase mb-1">판돈 (Pot)</span>
-                            <span className="text-5xl font-black text-yellow-500">${roomState.pot}</span>
+                {/* 중앙 Pot (판돈) 및 카드 연출 영역 */}
+                <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center gap-12 pointer-events-none w-full max-w-4xl">
+
+                    <div className="flex-1" />
+
+                    {/* 중앙 Pot (판돈) - 애니메이션 부여 */}
+                    <motion.div
+                        animate={{ y: [0, -10, 0] }}
+                        transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                        className="flex flex-col items-center justify-center flex-shrink-0"
+                    >
+                        <div className="w-32 h-32 rounded-full border-4 border-yellow-500 bg-dark-800 flex items-center justify-center shadow-[0_0_30px_rgba(234,179,8,0.3)] backdrop-blur-sm">
+                            <div className="text-center">
+                                <span className="text-gray-400 text-sm font-bold tracking-widest uppercase mb-1">판돈 (Pot)</span>
+                                <span className="text-5xl font-black text-yellow-500">${roomState.pot}</span>
+                            </div>
                         </div>
+                        <div className="mt-4 bg-dark-900 px-4 py-1 rounded-full text-sm text-gray-500 font-bold tracking-widest">
+                            {roomState.turnDirection === 1 ? '↻ 시계 방향 턴' : '↺ 반시계 방향 턴'}
+                        </div>
+                    </motion.div>
+
+                    {/* 방금 사용된 카드 (우측에 띄움) */}
+                    <div className="flex-1 flex justify-start pl-8 relative h-48">
+                        <AnimatePresence>
+                            {lastUsedCard && (
+                                <motion.div
+                                    key={lastUsedCard.timestamp}
+                                    initial={{ rotateY: 180, scale: 0.5, opacity: 0, x: -50 }}
+                                    animate={{ rotateY: 0, scale: 1, opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                                    transition={{ duration: 0.6, type: "spring" }}
+                                    className="flex items-center gap-4 bg-dark-800/90 p-4 rounded-xl shadow-2xl border border-gray-600"
+                                >
+                                    <div
+                                        className="w-24 h-36 rounded-md bg-cover bg-center shadow-lg border-2 border-primary-500"
+                                        style={{ backgroundImage: `url(${aceOfSpades})` }}
+                                    />
+                                    <div className="flex flex-col max-w-[200px]">
+                                        <span className="text-gray-400 text-xs font-bold mb-1">{lastUsedCard.playerName}님의 사용 카드</span>
+                                        <span className="text-2xl font-black text-white mb-2 text-yellow-500">{lastUsedCard.cardName}</span>
+                                        <span className="text-sm text-gray-300 leading-snug">
+                                            {CARD_INFO[lastUsedCard.cardName]?.desc || ''}
+                                        </span>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
-                    <div className="mt-4 bg-dark-900 px-4 py-1 rounded-full text-sm text-gray-500 font-bold tracking-widest">
-                        {roomState.turnDirection === 1 ? '↻ 시계 방향 턴' : '↺ 반시계 방향 턴'}
-                    </div>
-                </motion.div>
+
+                </div>
 
                 {/* Bottom 4 Players (idx 4~7) */}
                 <div className="flex justify-center gap-4 w-full mt-auto translate-y-24">

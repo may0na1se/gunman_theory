@@ -601,6 +601,7 @@ io.on('connection', (socket) => {
         }
 
         io.to(roomId).emit('global_message', actionMsg);
+        io.to(roomId).emit('used_card_broadcast', { playerName: currentPlayer.name, cardName });
 
         // (발악의 확률 -25% 로직 수정: 이전엔 턴을 스킵하지 않는 변수로 썼으나, 이젠 모든 카드가 턴을 스킵하지 않음)
         // 도주처럼 사망(이탈) 판정이 난 경우가 아니면 턴은 그대로 본인에게 유지됨.
