@@ -87,9 +87,9 @@ function startNextTurn(room) {
 
             prevPlayer.prob += changeAmount;
 
-            // 최대/최소 확률 제한 (10% ~ 95%)
+            // 최대/최소 확률 제한
             if (prevPlayer.prob < 10) prevPlayer.prob = 10;
-            if (prevPlayer.prob > 95) prevPlayer.prob = 95;
+            if (prevPlayer.prob > prevPlayer.maxProb) prevPlayer.prob = prevPlayer.maxProb;
         }
     }
 
@@ -214,6 +214,7 @@ io.on('connection', (socket) => {
                 hasInsurance: false, // 보험 가입 여부
                 hasExtraTurn: false, // 발악 (추가 행동권) 여부
                 hasCurse: false, // 다음 사격 시 저주 묻히기 버프
+                maxProb: 66, // 최대 확률 상한
                 isBankrupt: false, // 완전 파산 여부
                 bankruptOrder: 0 // 먼저 파산한 순서 기록용 (0이면 파산 안함)
             });
@@ -263,7 +264,7 @@ io.on('connection', (socket) => {
 
                 room.players.forEach(p => {
                     p.money = 200; // 초기 자본 세팅
-                    p.prob = Math.floor(Math.random() * (75 - 10 + 1)) + 10; // 10~75% 초기 할당
+                    p.prob = Math.floor(Math.random() * (66 - 10 + 1)) + 10; // 10~66% 초기 할당
                     p.isAlive = true;
                     p.isBankrupt = false;
                     p.bankruptOrder = 0;
@@ -280,6 +281,7 @@ io.on('connection', (socket) => {
                     p.hasInsurance = false;
                     p.hasExtraTurn = false;
                     p.hasCurse = false;
+                    p.maxProb = 66; // 게임 시작 시 66% 상한
                 });
 
                 // 첫 번째 유저(0번 인덱스)의 턴을 명시적으로 시작(자동 베팅 적용을 위해 현재 턴을 -1로 두고 넘김)
@@ -324,6 +326,7 @@ io.on('connection', (socket) => {
                 p.hasInsurance = false;
                 p.hasExtraTurn = false;
                 p.hasCurse = false;
+                p.maxProb = 66;
                 p.isBankrupt = false;
                 p.bankruptOrder = 0;
             });
@@ -361,7 +364,7 @@ io.on('connection', (socket) => {
                     } else {
                         // 새 라운드 시작 복구
                         p.isAlive = true;
-                        p.prob = Math.floor(Math.random() * (75 - 10 + 1)) + 10;
+                        p.prob = Math.floor(Math.random() * (66 - 10 + 1)) + 10;
                         p.passive = '유지';
 
                         const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
@@ -374,6 +377,7 @@ io.on('connection', (socket) => {
                         p.hasInsurance = false;
                         p.hasExtraTurn = false;
                         p.hasCurse = false;
+                        p.maxProb = 66;
                     }
                 });
 
@@ -442,11 +446,11 @@ io.on('connection', (socket) => {
                 const targetPlayer = room.players.find(p => p.id === targetId);
 
                 if (targetPlayer && targetPlayer.isAlive) {
-                    // 사격 실시 전: 발사자에게 저주 버프가 있다면 타겟의 확률 50% 폭락
+                    // 사격 실시 전: 발사자에게 저주 버프가 있다면 타겟의 확률 폭락
                     if (currentPlayer.hasCurse) {
-                        targetPlayer.prob = Math.max(10, targetPlayer.prob - 50);
+                        targetPlayer.prob = Math.max(10, targetPlayer.prob - 30);
                         currentPlayer.hasCurse = false;
-                        io.to(roomId).emit('global_message', `☠️ [저주] ${currentPlayer.name}님의 저주받은 총알이 닿아 ${targetPlayer.name}님의 확률이 50% 폭락했습니다!`);
+                        io.to(roomId).emit('global_message', `☠️ [저주] ${currentPlayer.name}님의 저주받은 총알이 닿아 ${targetPlayer.name}님의 확률이 30% 폭락했습니다!`);
                     }
 
                     const isHit = Math.random() * 100 < currentPlayer.prob;
@@ -534,7 +538,7 @@ io.on('connection', (socket) => {
         if (currentPlayer?.id !== socket.id || currentPlayer.activeCard !== cardName) return;
 
         // 카드 사용 코스트 차감
-        const reqCostObj = { '방탄복': 7, '보험': 10 };
+        const reqCostObj = { '방탄복': 25, '보험': 20 };
         if (reqCostObj[cardName]) {
             if (currentPlayer.money < reqCostObj[cardName]) return;
             currentPlayer.money -= reqCostObj[cardName];
@@ -553,11 +557,11 @@ io.on('connection', (socket) => {
                 currentPlayer.hasVest = true;
                 break;
             case '도주':
-                const escapeMoney = Math.floor(room.pot * 0.2);
+                const escapeMoney = Math.floor(room.pot * 0.4);
                 room.pot -= escapeMoney;
                 currentPlayer.money += escapeMoney;
                 currentPlayer.isAlive = false; // 도주는 라운드 즉시 이탈하므로 사망판정(관전)
-                actionMsg += ` 🏃‍♂️ 판돈 20%($${escapeMoney})를 들고 무사히 도망쳤습니다!`;
+                actionMsg += ` 🏃‍♂️ 판돈 40%($${escapeMoney})를 들고 무사히 도망쳤습니다!`;
                 break;
             case '역주행':
                 room.turnDirection = room.turnDirection === 1 ? -1 : 1;
@@ -573,11 +577,13 @@ io.on('connection', (socket) => {
                 currentPlayer.isMeditation = true;
                 break;
             case '탄약병':
-                currentPlayer.prob = 90;
+                currentPlayer.maxProb = 75;
+                currentPlayer.prob = Math.min(currentPlayer.maxProb, currentPlayer.prob + 40);
+                actionMsg += ` 💊 특수 탄약을 장전했습니다! 확률이 40% 증가하고 상한이 75%로 늘어났습니다.`;
                 break;
             case '저주':
                 currentPlayer.hasCurse = true;
-                actionMsg += ` ☠️ 총알에 저주를 부여했습니다! 다음 사격 시 상대방의 확률이 50% 폭락합니다.`;
+                actionMsg += ` ☠️ 총알에 저주를 부여했습니다! 다음 사격 시 상대방의 확률이 30% 폭락합니다.`;
                 break;
             case '보험':
                 currentPlayer.hasInsurance = true;
@@ -588,9 +594,9 @@ io.on('connection', (socket) => {
                 actionMsg += ` 💥 모든 사람의 손에서 액티브 카드가 소멸했습니다.`;
                 break;
             case '발악':
-                currentPlayer.prob = Math.max(10, currentPlayer.prob - 25);
+                currentPlayer.prob = Math.max(10, currentPlayer.prob - 20);
                 currentPlayer.hasExtraTurn = true;
-                actionMsg += ` 🩸 피를 흘리며 한번 더 행동기회를 얻습니다. (확률 -25%, 사격이나 카드획득 1회 턴 유지)`;
+                actionMsg += ` 🩸 피를 흘리며 한번 더 행동기회를 얻습니다. (확률 -20%, 이번 행동 턴 소모 안함)`;
                 break;
         }
 

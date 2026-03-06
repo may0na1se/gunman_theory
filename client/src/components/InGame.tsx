@@ -143,15 +143,14 @@ export default function InGame() {
 
     const handleDrawCard = () => {
         if (!isMyTurn || !socket) return;
+        setIsShootingMode(false);
+        setActiveCardMode(null);
         socket.emit('action_draw_card');
     };
 
-    const handleTogglePassive = () => {
+    const handleChangePassive = (stance: '증가' | '유지' | '감소') => {
         if (!socket || !roomState) return;
-        const me = roomState.players.find(p => p.name === username);
-        if (!me) return;
-        const nextStance = me.passive === '증가' ? '유지' : me.passive === '유지' ? '감소' : '증가';
-        socket.emit('change_passive', { stance: nextStance });
+        socket.emit('change_passive', { stance });
     };
 
     // 내 카드 사용 버튼 클릭 핸들러
@@ -168,6 +167,7 @@ export default function InGame() {
         if (needTarget) {
             // 타겟 지정 모드로 토글
             setActiveCardMode(activeCardMode === cardName ? null : cardName);
+            setIsShootingMode(false);
         } else {
             // 즉시 발동형 카드 (서버 전송)
             socket.emit('action_use_card', { cardName });
@@ -364,7 +364,10 @@ export default function InGame() {
                             새 액티브 카드 받기
                         </button>
                         <button
-                            onClick={() => setIsShootingMode(!isShootingMode)}
+                            onClick={() => {
+                                setIsShootingMode(!isShootingMode);
+                                setActiveCardMode(null);
+                            }}
                             className={`${isShootingMode ? 'bg-red-600 hover:bg-red-500 ring-4 ring-red-400' : 'bg-red-500 hover:bg-red-400'} text-white font-bold py-3 px-8 rounded-xl shadow border border-red-400 transition-colors flex items-center justify-center gap-2`}
                         >
                             <span>🎯 {isShootingMode ? '사격 취소' : '사격하기'}</span>
@@ -392,14 +395,33 @@ export default function InGame() {
                             className="fixed bottom-4 left-4 z-40 flex gap-4 bg-dark-800/90 p-5 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-48"
                         >
                             {/* 패시브 조작 영역 */}
-                            <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-32 shadow-inner">
-                                <span className="text-gray-400 text-sm font-bold mt-2">패시브 상태 (클릭해서 확률 조절)</span>
-                                <button
-                                    onClick={handleTogglePassive}
-                                    className="bg-primary-500 w-full rounded-lg py-3 flex items-center justify-center text-dark-900 font-black shadow hover:bg-yellow-400 transition-colors text-base"
-                                >
-                                    {me.passive === '증가' ? <span className="text-red-700">▲ 증가</span> : me.passive === '유지' ? '- 유지' : <span className="text-blue-700">▼ 감소</span>}
-                                </button>
+                            <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-44 shadow-inner">
+                                <div className="text-center w-full mb-2">
+                                    <span className="text-gray-400 text-xs font-bold block mb-1">패시브 (확률 조정)</span>
+                                    <div className="bg-dark-800 text-white font-black py-1 px-3 rounded-md border border-gray-600 text-sm flex items-center justify-center gap-1 shadow-inner">
+                                        현재: {me.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : me.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
+                                    </div>
+                                </div>
+                                <div className="flex gap-1 w-full mt-auto">
+                                    <button
+                                        onClick={() => handleChangePassive('증가')}
+                                        className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '증가' ? 'bg-red-900/50 border-red-500 text-red-400' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-red-300'}`}
+                                    >
+                                        증가
+                                    </button>
+                                    <button
+                                        onClick={() => handleChangePassive('유지')}
+                                        className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '유지' ? 'bg-gray-800 border-gray-400 text-gray-300' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-gray-200'}`}
+                                    >
+                                        유지
+                                    </button>
+                                    <button
+                                        onClick={() => handleChangePassive('감소')}
+                                        className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '감소' ? 'bg-blue-900/50 border-blue-500 text-blue-400' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-blue-300'}`}
+                                    >
+                                        감소
+                                    </button>
+                                </div>
                             </div>
 
                             {/* 액티브 카드 정보 영역 */}
