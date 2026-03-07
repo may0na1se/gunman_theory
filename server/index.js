@@ -382,7 +382,8 @@ io.on('connection', (socket) => {
                 });
 
                 room.turnDirection = 1;
-                room.turnIndex = -1;
+                const winnerIndex = room.players.findIndex(p => p.id === room.winnerId);
+                room.turnIndex = winnerIndex !== -1 ? winnerIndex : -1;
                 startNextTurn(room);
 
                 io.to(roomId).emit('global_message', `📣 라운드 ${room.round} 시작! 기준 베팅금: $${room.currentBet}`);
@@ -578,8 +579,8 @@ io.on('connection', (socket) => {
                 break;
             case '탄약병':
                 currentPlayer.maxProb = 75;
-                currentPlayer.prob = Math.min(currentPlayer.maxProb, currentPlayer.prob + 40);
-                actionMsg += ` 💊 특수 탄약을 장전했습니다! 확률이 40% 증가하고 상한이 75%로 늘어났습니다.`;
+                currentPlayer.prob = Math.min(currentPlayer.maxProb, currentPlayer.prob + 30);
+                actionMsg += ` 💊 특수 탄약을 장전했습니다! 확률이 30% 증가하고 상한이 75%로 늘어났습니다.`;
                 break;
             case '저주':
                 currentPlayer.hasCurse = true;

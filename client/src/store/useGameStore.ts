@@ -28,7 +28,7 @@ export const CARD_INFO: Record<ActiveCardType, { desc: string; needTarget: boole
     '후원자 A': { desc: '즉시 50달러 획득.', needTarget: false },
     '후원자 B': { desc: '자신의 턴이 올 때마다 10달러씩 획득.', needTarget: false },
     '명상': { desc: '패시브 확률 변동이 고정됨 (증가 10%, 유지 0%, 감소 -10%).', needTarget: false },
-    '탄약병': { desc: '사용 즉시 자신의 격발 확률이 40%p 증가하며, 최대 확률 한도가 75%로 늘어나게 됩니다.', needTarget: false },
+    '탄약병': { desc: '사용 즉시 자신의 격발 확률이 30%p 증가하며, 최대 확률 한도가 75%로 늘어나게 됩니다.', needTarget: false },
     '저주': {
         desc: "내 총에 맞은 플레이어의 확률을 30% 감소시킵니다. (최소 10%)",
         needTarget: false
