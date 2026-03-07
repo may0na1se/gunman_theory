@@ -264,7 +264,7 @@ io.on('connection', (socket) => {
 
                 room.players.forEach(p => {
                     p.money = 200; // 초기 자본 세팅
-                    p.prob = Math.floor(Math.random() * (66 - 10 + 1)) + 10; // 10~66% 초기 할당
+                    p.prob = Math.floor(Math.random() * (45 - 10 + 1)) + 10; // 10~45% 초기 할당
                     p.isAlive = true;
                     p.isBankrupt = false;
                     p.bankruptOrder = 0;
@@ -364,7 +364,7 @@ io.on('connection', (socket) => {
                     } else {
                         // 새 라운드 시작 복구
                         p.isAlive = true;
-                        p.prob = Math.floor(Math.random() * (66 - 10 + 1)) + 10;
+                        p.prob = Math.floor(Math.random() * (45 - 10 + 1)) + 10;
                         p.passive = '유지';
 
                         const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
