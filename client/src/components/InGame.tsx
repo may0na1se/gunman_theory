@@ -443,97 +443,106 @@ export default function InGame() {
                     const cardMeta = myCard ? CARD_INFO[myCard] : null;
 
                     return (
-                        <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="fixed bottom-4 left-4 z-40 flex gap-4 bg-dark-800/90 p-5 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-48"
-                        >
-                            {/* 패시브 조작 영역 */}
-                            <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-44 shadow-inner">
-                                <div className="text-center w-full mb-2">
-                                    <span className="text-gray-400 text-xs font-bold block mb-1">패시브 (클릭해서 조정)</span>
-                                    <div className="bg-dark-800 text-white font-black py-1 px-3 rounded-md border border-gray-600 text-sm flex items-center justify-center gap-1 shadow-inner">
-                                        현재: {me.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : me.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
+                        <>
+                            <motion.div
+                                initial={{ y: 100, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 100, opacity: 0 }}
+                                className="fixed bottom-4 left-4 z-40 flex gap-4 bg-dark-800/90 p-5 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-48"
+                            >
+                                {/* 패시브 조작 영역 */}
+                                <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-44 shadow-inner">
+                                    <div className="text-center w-full mb-2">
+                                        <span className="text-gray-400 text-xs font-bold block mb-1">패시브 (클릭해서 조정)</span>
+                                        <div className="bg-dark-800 text-white font-black py-1 px-3 rounded-md border border-gray-600 text-sm flex items-center justify-center gap-1 shadow-inner">
+                                            현재: {me.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : me.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex gap-1 w-full mt-auto">
-                                    <button
-                                        onClick={() => handleChangePassive('증가')}
-                                        className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '증가' ? 'bg-red-900/50 border-red-500 text-red-400' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-red-300'}`}
-                                    >
-                                        증가
-                                    </button>
-                                    <button
-                                        onClick={() => handleChangePassive('유지')}
-                                        className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '유지' ? 'bg-gray-800 border-gray-400 text-gray-300' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-gray-200'}`}
-                                    >
-                                        유지
-                                    </button>
-                                    <button
-                                        onClick={() => handleChangePassive('감소')}
-                                        className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '감소' ? 'bg-blue-900/50 border-blue-500 text-blue-400' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-blue-300'}`}
-                                    >
-                                        감소
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* 액티브 상태 (버프) 표시 영역 */}
-                            <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-64 shadow-inner">
-                                <span className="text-gray-400 text-xs font-bold w-full text-center border-b border-gray-700 pb-2 mb-2">활성화된 버프</span>
-                                <div className="flex flex-wrap gap-2 justify-center w-full overflow-y-auto max-h-[120px] pb-1">
-                                    {/* 버프 목록 렌더링 */}
-                                    {me.hasVest && <span className="text-xs font-bold text-white bg-blue-900/50 border border-blue-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🛡️ 방탄복</span>}
-                                    {me.hasRobber && <span className="text-xs font-bold text-white bg-indigo-900/50 border border-indigo-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💰 강도</span>}
-                                    {me.hasSponsor && <span className="text-xs font-bold text-white bg-green-900/50 border border-green-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🤝 후원자 B</span>}
-                                    {me.isMeditation && <span className="text-xs font-bold text-white bg-purple-900/50 border border-purple-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🧘 명상</span>}
-                                    {me.hasInsurance && <span className="text-xs font-bold text-white bg-teal-900/50 border border-teal-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🏥 생명보험</span>}
-                                    {me.hasExtraTurn && <span className="text-xs font-bold text-white bg-red-900/50 border border-red-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🩸 발악</span>}
-                                    {me.hasCurse && <span className="text-xs font-bold text-white bg-stone-900/50 border border-stone-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">☠️ 저주 탄환</span>}
-                                    {me.maxProb === 75 && <span className="text-xs font-bold text-white bg-orange-900/50 border border-orange-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💊 탄약병</span>}
-                                    
-                                    {!(me.hasVest || me.hasRobber || me.hasSponsor || me.isMeditation || me.hasInsurance || me.hasExtraTurn || me.hasCurse || me.maxProb === 75) && (
-                                        <span className="text-gray-500 text-xs mt-2 italic flex items-center gap-1"><span className="opacity-50">없음</span></span>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            {/* 액티브 카드 정보 영역 */}
-                            <div className="flex flex-col justify-between flex-1 min-w-[280px] max-w-[360px] bg-dark-900 border border-blue-900/50 p-4 rounded-xl shadow-inner relative">
-                                <div>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="text-blue-400 text-sm font-bold">액티브 카드</span>
-                                    </div>
-                                    <div className="text-2xl font-black text-white mb-3 flex items-center gap-2">
-                                        {myCard || '카드 없음'}
-                                        {cardMeta?.cost && (
-                                            <span className="text-red-500 text-sm font-bold bg-red-900/30 px-2 py-1 rounded-md border border-red-900/50 transform -translate-y-0.5">
-                                                (비용: ${cardMeta.cost})
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-gray-300 leading-relaxed min-h-[40px]">
-                                        {cardMeta
-                                            ? cardMeta.desc
-                                            : '내 턴에 무작위 새 카드를 받을 수 있습니다.'}
-                                    </p>
-                                </div>
-
-                                {/* 카드 사용 버튼 (우측 하단으로 이동, 큼지막하게) */}
-                                {myCard && cardMeta && isMyTurn && (
-                                    <div className="flex justify-end mt-2">
+                                    <div className="flex gap-1 w-full mt-auto">
                                         <button
-                                            onClick={() => handleUseCard(myCard, cardMeta.needTarget)}
-                                            className={`text-white text-sm font-bold py-2 px-6 rounded-lg shadow-lg transition-colors flex items-center justify-center gap-2 w-full md:w-auto
-                                            ${activeCardMode === myCard ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-500'}`}
+                                            onClick={() => handleChangePassive('증가')}
+                                            className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '증가' ? 'bg-red-900/50 border-red-500 text-red-400' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-red-300'}`}
                                         >
-                                            {activeCardMode === myCard ? <><AlertTriangle size={16} />선택 취소</> : cardMeta.needTarget ? <><Target size={16} /> 타겟 지정</> : '이 카드 사용하기'}
+                                            증가
+                                        </button>
+                                        <button
+                                            onClick={() => handleChangePassive('유지')}
+                                            className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '유지' ? 'bg-gray-800 border-gray-400 text-gray-300' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-gray-200'}`}
+                                        >
+                                            유지
+                                        </button>
+                                        <button
+                                            onClick={() => handleChangePassive('감소')}
+                                            className={`flex-1 rounded-md py-2 flex items-center justify-center font-black shadow transition-colors text-xs border ${me.passive === '감소' ? 'bg-blue-900/50 border-blue-500 text-blue-400' : 'bg-dark-800 border-gray-700 text-gray-400 hover:bg-dark-700 hover:text-blue-300'}`}
+                                        >
+                                            감소
                                         </button>
                                     </div>
-                                )}
-                            </div>
-                        </motion.div>
+                                </div>
+                                
+                                {/* 액티브 카드 정보 영역 */}
+                                <div className="flex flex-col justify-between flex-1 min-w-[280px] max-w-[360px] bg-dark-900 border border-blue-900/50 p-4 rounded-xl shadow-inner relative">
+                                    <div>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-blue-400 text-sm font-bold">액티브 카드</span>
+                                        </div>
+                                        <div className="text-2xl font-black text-white mb-3 flex items-center gap-2">
+                                            {myCard || '카드 없음'}
+                                            {cardMeta?.cost && (
+                                                <span className="text-red-500 text-sm font-bold bg-red-900/30 px-2 py-1 rounded-md border border-red-900/50 transform -translate-y-0.5">
+                                                    (비용: ${cardMeta.cost})
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-gray-300 leading-relaxed min-h-[40px]">
+                                            {cardMeta
+                                                ? cardMeta.desc
+                                                : '내 턴에 무작위 새 카드를 받을 수 있습니다.'}
+                                        </p>
+                                    </div>
+
+                                    {/* 카드 사용 버튼 (우측 하단으로 이동, 큼지막하게) */}
+                                    {myCard && cardMeta && isMyTurn && (
+                                        <div className="flex justify-end mt-2">
+                                            <button
+                                                onClick={() => handleUseCard(myCard, cardMeta.needTarget)}
+                                                className={`text-white text-sm font-bold py-2 px-6 rounded-lg shadow-lg transition-colors flex items-center justify-center gap-2 w-full md:w-auto
+                                                ${activeCardMode === myCard ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-500'}`}
+                                            >
+                                                {activeCardMode === myCard ? <><AlertTriangle size={16} />선택 취소</> : cardMeta.needTarget ? <><Target size={16} /> 타겟 지정</> : '이 카드 사용하기'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+
+                            {/* 액티브 상태 (버프) 표시 영역 (우측 하단 고정) */}
+                            <motion.div
+                                initial={{ y: 100, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 100, opacity: 0 }}
+                                className="fixed bottom-4 right-4 z-40 flex gap-4 bg-dark-800/90 p-5 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-48"
+                            >
+                                <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-64 shadow-inner h-full">
+                                    <span className="text-gray-400 text-sm font-bold w-full text-center border-b border-gray-700 pb-2 mb-2">활성화된 버프</span>
+                                    <div className="flex flex-wrap gap-2 justify-center w-full overflow-y-auto pb-1 mt-1">
+                                        {/* 버프 목록 렌더링 */}
+                                        {me.hasVest && <span className="text-xs font-bold text-white bg-blue-900/50 border border-blue-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🛡️ 방탄복</span>}
+                                        {me.hasRobber && <span className="text-xs font-bold text-white bg-indigo-900/50 border border-indigo-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💰 강도</span>}
+                                        {me.hasSponsor && <span className="text-xs font-bold text-white bg-green-900/50 border border-green-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🤝 후원자 B</span>}
+                                        {me.isMeditation && <span className="text-xs font-bold text-white bg-purple-900/50 border border-purple-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🧘 명상</span>}
+                                        {me.hasInsurance && <span className="text-xs font-bold text-white bg-teal-900/50 border border-teal-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🏥 생명보험</span>}
+                                        {me.hasExtraTurn && <span className="text-xs font-bold text-white bg-red-900/50 border border-red-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🩸 발악</span>}
+                                        {me.hasCurse && <span className="text-xs font-bold text-white bg-stone-900/50 border border-stone-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">☠️ 저주 탄환</span>}
+                                        {me.maxProb === 75 && <span className="text-xs font-bold text-white bg-orange-900/50 border border-orange-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💊 탄약병</span>}
+                                        
+                                        {!(me.hasVest || me.hasRobber || me.hasSponsor || me.isMeditation || me.hasInsurance || me.hasExtraTurn || me.hasCurse || me.maxProb === 75) && (
+                                            <span className="text-gray-500 text-xs mt-2 italic flex items-center gap-1"><span className="opacity-50">없음</span></span>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </>
                     );
                 })()}
             </AnimatePresence>
