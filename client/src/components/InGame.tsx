@@ -452,7 +452,7 @@ export default function InGame() {
                             {/* 패시브 조작 영역 */}
                             <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-44 shadow-inner">
                                 <div className="text-center w-full mb-2">
-                                    <span className="text-gray-400 text-xs font-bold block mb-1">패시브 (확률 조정)</span>
+                                    <span className="text-gray-400 text-xs font-bold block mb-1">패시브 (클릭해서 조정)</span>
                                     <div className="bg-dark-800 text-white font-black py-1 px-3 rounded-md border border-gray-600 text-sm flex items-center justify-center gap-1 shadow-inner">
                                         현재: {me.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : me.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
                                     </div>
@@ -479,6 +479,26 @@ export default function InGame() {
                                 </div>
                             </div>
 
+                            {/* 액티브 상태 (버프) 표시 영역 */}
+                            <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-64 shadow-inner">
+                                <span className="text-gray-400 text-xs font-bold w-full text-center border-b border-gray-700 pb-2 mb-2">활성화된 버프</span>
+                                <div className="flex flex-wrap gap-2 justify-center w-full overflow-y-auto max-h-[120px] pb-1">
+                                    {/* 버프 목록 렌더링 */}
+                                    {me.hasVest && <span className="text-xs font-bold text-white bg-blue-900/50 border border-blue-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🛡️ 방탄복</span>}
+                                    {me.hasRobber && <span className="text-xs font-bold text-white bg-indigo-900/50 border border-indigo-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💰 강도</span>}
+                                    {me.hasSponsor && <span className="text-xs font-bold text-white bg-green-900/50 border border-green-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🤝 후원자 B</span>}
+                                    {me.isMeditation && <span className="text-xs font-bold text-white bg-purple-900/50 border border-purple-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🧘 명상</span>}
+                                    {me.hasInsurance && <span className="text-xs font-bold text-white bg-teal-900/50 border border-teal-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🏥 생명보험</span>}
+                                    {me.hasExtraTurn && <span className="text-xs font-bold text-white bg-red-900/50 border border-red-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🩸 발악</span>}
+                                    {me.hasCurse && <span className="text-xs font-bold text-white bg-stone-900/50 border border-stone-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">☠️ 저주 탄환</span>}
+                                    {me.maxProb === 75 && <span className="text-xs font-bold text-white bg-orange-900/50 border border-orange-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💊 탄약병</span>}
+                                    
+                                    {!(me.hasVest || me.hasRobber || me.hasSponsor || me.isMeditation || me.hasInsurance || me.hasExtraTurn || me.hasCurse || me.maxProb === 75) && (
+                                        <span className="text-gray-500 text-xs mt-2 italic flex items-center gap-1"><span className="opacity-50">없음</span></span>
+                                    )}
+                                </div>
+                            </div>
+                            
                             {/* 액티브 카드 정보 영역 */}
                             <div className="flex flex-col justify-between flex-1 min-w-[280px] max-w-[360px] bg-dark-900 border border-blue-900/50 p-4 rounded-xl shadow-inner relative">
                                 <div>

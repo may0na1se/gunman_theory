@@ -11,6 +11,14 @@ export interface Player {
     isAlive: boolean;
     isBankrupt: boolean; // 새 라운드 시작 시 파산 여부
     bankruptOrder: number; // 먼저 파산한 순위표 기록용 카운터
+    hasVest: boolean;
+    hasRobber: boolean;
+    hasSponsor: boolean;
+    isMeditation: boolean;
+    hasInsurance: boolean;
+    hasExtraTurn: boolean;
+    hasCurse: boolean;
+    maxProb: number;
     passive: '증가' | '유지' | '감소';
     activeCard: ActiveCardType | null;
 }
