@@ -479,7 +479,7 @@ export default function InGame() {
                                         </button>
                                     </div>
                                 </div>
-                                
+
                                 {/* 액티브 카드 정보 영역 */}
                                 <div className="flex flex-col justify-between flex-1 min-w-[280px] max-w-[360px] bg-dark-900 border border-blue-900/50 p-4 rounded-xl shadow-inner relative">
                                     <div>
@@ -529,14 +529,14 @@ export default function InGame() {
                                         {/* 버프 목록 렌더링 */}
                                         {me.hasVest && <span className="text-xs font-bold text-white bg-blue-900/50 border border-blue-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🛡️ 방탄복</span>}
                                         {me.hasRobber && <span className="text-xs font-bold text-white bg-indigo-900/50 border border-indigo-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💰 강도</span>}
-                                        {me.hasSponsor && <span className="text-xs font-bold text-white bg-green-900/50 border border-green-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🤝 후원자 B</span>}
+                                        {me.hasSponsor > 0 && <span className="text-xs font-bold text-white bg-green-900/50 border border-green-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🤝 후원자 B x{me.hasSponsor}</span>}
                                         {me.isMeditation && <span className="text-xs font-bold text-white bg-purple-900/50 border border-purple-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🧘 명상</span>}
-                                        {me.hasInsurance && <span className="text-xs font-bold text-white bg-teal-900/50 border border-teal-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🏥 생명보험</span>}
+                                        {me.hasInsurance > 0 && <span className="text-xs font-bold text-white bg-teal-900/50 border border-teal-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🏥 생명보험 x{me.hasInsurance}</span>}
                                         {me.hasExtraTurn && <span className="text-xs font-bold text-white bg-red-900/50 border border-red-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🩸 발악</span>}
                                         {me.hasCurse && <span className="text-xs font-bold text-white bg-stone-900/50 border border-stone-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">☠️ 저주 탄환</span>}
                                         {me.maxProb === 75 && <span className="text-xs font-bold text-white bg-orange-900/50 border border-orange-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💊 탄약병</span>}
-                                        
-                                        {!(me.hasVest || me.hasRobber || me.hasSponsor || me.isMeditation || me.hasInsurance || me.hasExtraTurn || me.hasCurse || me.maxProb === 75) && (
+
+                                        {!(me.hasVest || me.hasRobber || me.hasSponsor > 0 || me.isMeditation || me.hasInsurance > 0 || me.hasExtraTurn || me.hasCurse || me.maxProb === 75) && (
                                             <span className="text-gray-500 text-xs mt-2 italic flex items-center gap-1"><span className="opacity-50">없음</span></span>
                                         )}
                                     </div>

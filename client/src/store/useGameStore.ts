@@ -13,9 +13,9 @@ export interface Player {
     bankruptOrder: number; // 먼저 파산한 순위표 기록용 카운터
     hasVest: boolean;
     hasRobber: boolean;
-    hasSponsor: boolean;
+    hasSponsor: number;
     isMeditation: boolean;
-    hasInsurance: boolean;
+    hasInsurance: number;
     hasExtraTurn: boolean;
     hasCurse: boolean;
     maxProb: number;

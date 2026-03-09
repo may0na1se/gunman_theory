@@ -110,10 +110,11 @@ function startNextTurn(room) {
     room.turnIndex = nextIndex;
     const currentPlayer = room.players[nextIndex];
 
-    // 후원자 B 버프 적용 (내 턴 시작 시 +$10)
-    if (currentPlayer.hasSponsor) {
-        currentPlayer.money += 10;
-        io.to(room.id).emit('global_message', `💰 [후원자 B] ${currentPlayer.name}님이 턴 시작 후원금 $10를 받았습니다.`);
+    // 후원자 B 버프 적용 (내 턴 시작 시 +$10 * 중첩)
+    if (currentPlayer.hasSponsor > 0) {
+        const amount = 10 * currentPlayer.hasSponsor;
+        currentPlayer.money += amount;
+        io.to(room.id).emit('global_message', `💰 [후원자 B] ${currentPlayer.name}님이 턴 시작 후원금 $${amount}를 받았습니다. (x${currentPlayer.hasSponsor})`);
     }
 
     // (기존) 턴 시작 시 의무베팅 했으나, 변경된 룰에 따라 행동 후 턴 넘기기 직전에 베팅 지불함.
@@ -129,10 +130,11 @@ function handlePlayerDeath(currentPlayer, room, io) {
         // 방탄복/강도에 맞추어 상태 변수가 필요하므로 아래 로직은 hasInsurance 여부로 변경합니다. (index.js 상단 상태변수에 hasInsurance 추가 요망)
     }
 
-    if (currentPlayer.hasInsurance) {
-        currentPlayer.money += 80;
-        currentPlayer.hasInsurance = false;
-        io.to(room.id).emit('global_message', `🏥 [보험 발동] ${currentPlayer.name}님이 사망하여 생명보험금 $80를 수령했습니다!`);
+    if (currentPlayer.hasInsurance > 0) {
+        const amount = 80 * currentPlayer.hasInsurance;
+        currentPlayer.money += amount;
+        io.to(room.id).emit('global_message', `🏥 [보험 발동] ${currentPlayer.name}님이 사망하여 생명보험금 $${amount}를 수령했습니다! (x${currentPlayer.hasInsurance})`);
+        currentPlayer.hasInsurance = 0;
     } else {
         // 죽어도 잔고는 유지됨 (단, 생존자에게 스틸당한 금액 등은 다른 곳에서 이미 계산됨)
         // 다음 라운드 시작 전 베팅금액 검사에서 파산 여부가 갈림.
@@ -209,9 +211,9 @@ io.on('connection', (socket) => {
                 // 버프 및 상태 변수
                 hasVest: false,
                 hasRobber: false,
-                hasSponsor: false,
+                hasSponsor: 0,
                 isMeditation: false,
-                hasInsurance: false, // 보험 가입 여부
+                hasInsurance: 0, // 보험 가입 여부 (중첩 횟수)
                 hasExtraTurn: false, // 발악 (추가 행동권) 여부
                 hasCurse: false, // 다음 사격 시 저주 묻히기 버프
                 maxProb: 66, // 최대 확률 상한
@@ -276,9 +278,9 @@ io.on('connection', (socket) => {
 
                     p.hasVest = false;
                     p.hasRobber = false;
-                    p.hasSponsor = false;
+                    p.hasSponsor = 0;
                     p.isMeditation = false;
-                    p.hasInsurance = false;
+                    p.hasInsurance = 0;
                     p.hasExtraTurn = false;
                     p.hasCurse = false;
                     p.maxProb = 66; // 게임 시작 시 66% 상한
@@ -321,9 +323,9 @@ io.on('connection', (socket) => {
                 p.activeCard = null;
                 p.hasVest = false;
                 p.hasRobber = false;
-                p.hasSponsor = false;
+                p.hasSponsor = 0;
                 p.isMeditation = false;
-                p.hasInsurance = false;
+                p.hasInsurance = 0;
                 p.hasExtraTurn = false;
                 p.hasCurse = false;
                 p.maxProb = 66;
@@ -372,9 +374,9 @@ io.on('connection', (socket) => {
 
                         p.hasVest = false;
                         p.hasRobber = false;
-                        p.hasSponsor = false;
+                        p.hasSponsor = 0;
                         p.isMeditation = false;
-                        p.hasInsurance = false;
+                        p.hasInsurance = 0;
                         p.hasExtraTurn = false;
                         p.hasCurse = false;
                         p.maxProb = 66;
@@ -486,7 +488,7 @@ io.on('connection', (socket) => {
                         io.to(roomId).emit('global_message', `🩸 [발악] ${currentPlayer.name}님이 추가 행동권을 소모했습니다. (턴 유지)`);
                     } else {
                         finishTurnAndPay(room, currentPlayer, io);
-                        if (!currentPlayer.isAlive && !currentPlayer.hasInsurance) {
+                        if (!currentPlayer.isAlive && currentPlayer.hasInsurance === 0) {
                             io.to(roomId).emit('global_message', `💀 [파산] ${currentPlayer.name}님이 판돈 지불에 실패하여 파산했습니다!`);
                         }
                         startNextTurn(room);
@@ -518,7 +520,7 @@ io.on('connection', (socket) => {
                     io.to(roomId).emit('global_message', `🩸 [발악] ${currentPlayer.name}님이 추가 행동권을 소모했습니다. (턴 유지)`);
                 } else {
                     finishTurnAndPay(room, currentPlayer, io);
-                    if (!currentPlayer.isAlive && !currentPlayer.hasInsurance) {
+                    if (!currentPlayer.isAlive && currentPlayer.hasInsurance === 0) {
                         io.to(roomId).emit('global_message', `💀 [파산] ${currentPlayer.name}님이 판돈 지불에 실패하여 파산했습니다!`);
                     }
                     startNextTurn(room);
@@ -572,7 +574,8 @@ io.on('connection', (socket) => {
                 currentPlayer.money += 50;
                 break;
             case '후원자 B':
-                currentPlayer.hasSponsor = true;
+                currentPlayer.hasSponsor += 1;
+                actionMsg += ` 🤝 후원자 B 버프를 받았습니다. (현재 ${currentPlayer.hasSponsor}중첩)`;
                 break;
             case '명상':
                 currentPlayer.isMeditation = true;
@@ -587,8 +590,8 @@ io.on('connection', (socket) => {
                 actionMsg += ` ☠️ 총알에 저주를 부여했습니다! 다음 사격 시 상대방의 확률이 30% 폭락합니다.`;
                 break;
             case '보험':
-                currentPlayer.hasInsurance = true;
-                actionMsg += ` 🏥 생명보험에 가입했습니다. 사망 시 $80를 받습니다.`;
+                currentPlayer.hasInsurance += 1;
+                actionMsg += ` 🏥 생명보험에 가입했습니다. 사망 시 $${80 * currentPlayer.hasInsurance}를 받습니다. (현재 ${currentPlayer.hasInsurance}중첩)`;
                 break;
             case '파괴':
                 room.players.forEach(p => p.activeCard = null);
@@ -609,7 +612,7 @@ io.on('connection', (socket) => {
         if (!currentPlayer.isAlive) {
             // 도주 카드를 써서 자가 이탈했거나, 코스트를 내다 파산한 경우에만 턴 넘김 처리
             // 이미 코스트는 위에서 냈음. 파산 연산 등은 finishTurnAndPay가 아니어도 사망 시 다음 턴으로.
-            if (!currentPlayer.hasInsurance && currentPlayer.money <= 0 && cardName !== '도주') {
+            if (currentPlayer.hasInsurance === 0 && currentPlayer.money <= 0 && cardName !== '도주') {
                 // 보험이 없고 돈이 0이하여서 죽었다면 코스트 지불 파산
                 io.to(roomId).emit('global_message', `💀 [파산] ${currentPlayer.name}님이 카드 비용 지불 후 파산했습니다!`);
             }
