@@ -14,8 +14,15 @@ const io = new Server(httpServer, {
     }
 });
 
-// 메모리 기반 게임 상태 저장소
 const rooms = new Map();
+
+// 턴 타이머 초기화 유틸
+function clearTurnTimeout(room) {
+    if (room.turnTimeout) {
+        clearTimeout(room.turnTimeout);
+        room.turnTimeout = null;
+    }
+}
 
 // 다음 턴 플레이어를 찾고 자동 베팅 처리하는 유틸리티
 function startNextTurn(room) {
@@ -24,6 +31,7 @@ function startNextTurn(room) {
     // 생존자가 1명 이하면 라운드 종료
     const alivePlayers = room.players.filter(p => p.isAlive && !p.isBankrupt);
     if (alivePlayers.length <= 1) {
+        clearTurnTimeout(room);
         if (alivePlayers.length === 1) {
             const winner = alivePlayers[0];
             const bonusPercent = room.round * 0.1; // 1라 10%, 2라 20%...
@@ -66,6 +74,17 @@ function startNextTurn(room) {
                 room.winnerId = host ? host.id : null;
             }
             io.to(room.id).emit('room_state_update', room);
+
+            // 10초 후 자동 다음 라운드 시작
+            room.bettingTimeout = setTimeout(() => {
+                if (room.phase === 'betting') {
+                    const nextRound = room.round + 1;
+                    const defaultBet = 5 + (nextRound * 5); // 2라운드=15, 3라=20, 4라=25
+                    io.to(room.id).emit('global_message', `⏳ 시간 초과! 라운드 ${nextRound}이(가) 기본 베팅액 $${defaultBet}로 자동 시작됩니다.`);
+                    processNextRoundStart(room, defaultBet, io);
+                }
+            }, 10000);
+
             return;
         }
     }
@@ -118,6 +137,25 @@ function startNextTurn(room) {
     }
 
     // (기존) 턴 시작 시 의무베팅 했으나, 변경된 룰에 따라 행동 후 턴 넘기기 직전에 베팅 지불함.
+
+    clearTurnTimeout(room);
+    room.turnEndTime = Date.now() + 20000;
+    room.turnTimeout = setTimeout(() => {
+        if (room.status !== 'playing') return;
+        const cp = room.players[room.turnIndex];
+        if (cp) {
+            io.to(room.id).emit('global_message', `⏳ 시간 초과! ${cp.name}님이 강제로 카드를 뽑고 턴을 넘깁니다.`);
+            const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
+            cp.activeCard = ALL_CARDS[Math.floor(Math.random() * ALL_CARDS.length)];
+            
+            finishTurnAndPay(room, cp, io);
+            if (!cp.isAlive && cp.hasInsurance === 0) {
+                io.to(room.id).emit('global_message', `💀 [파산] ${cp.name}님이 판돈 지불에 실패하여 파산했습니다!`);
+            }
+            startNextTurn(room);
+            io.to(room.id).emit('room_state_update', room);
+        }
+    }, 20000);
 }
 
 // 플레이어 사망(파산/총격) 공통 로직 (보험금 체크)
@@ -141,7 +179,6 @@ function handlePlayerDeath(currentPlayer, room, io) {
     }
 }
 
-// 턴 종료 처리 (지불 및 파산 판정)를 공통화
 function finishTurnAndPay(room, currentPlayer, io) {
     if (currentPlayer.money >= room.currentBet) {
         currentPlayer.money -= room.currentBet;
@@ -151,6 +188,56 @@ function finishTurnAndPay(room, currentPlayer, io) {
         room.pot += currentPlayer.money;
         handlePlayerDeath(currentPlayer, room, io);
     }
+}
+
+function processNextRoundStart(room, betAmount, io) {
+    if (room.bettingTimeout) {
+        clearTimeout(room.bettingTimeout);
+        room.bettingTimeout = null;
+    }
+
+    room.currentBet = betAmount;
+    room.round += 1;
+    room.phase = 'playing';
+    room.pot = 0;
+
+    room.players.forEach(p => {
+        if (p.isBankrupt) return; // 이미 영구 파산한 사람은 대상 외
+
+        // 새 라운드 베팅금액 미달일 시 영구파산
+        if (p.money < room.currentBet) {
+            p.isBankrupt = true;
+            p.isAlive = false;
+            room.bankruptCount += 1;
+            p.bankruptOrder = room.bankruptCount;
+            io.to(room.id).emit('global_message', `📉 ${p.name}님이 베팅금액($${room.currentBet})을 내지 못해 파산했습니다!`);
+        } else {
+            // 새 라운드 시작 복구
+            p.isAlive = true;
+            p.prob = Math.floor(Math.random() * (45 - 10 + 1)) + 10;
+            p.passive = '유지';
+
+            const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
+            p.activeCard = ALL_CARDS[Math.floor(Math.random() * ALL_CARDS.length)];
+
+            p.hasVest = false;
+            p.hasRobber = false;
+            p.hasSponsor = 0;
+            p.isMeditation = false;
+            p.hasInsurance = 0;
+            p.hasExtraTurn = false;
+            p.hasCurse = false;
+            p.maxProb = 66;
+        }
+    });
+
+    room.turnDirection = 1;
+    const winnerIndex = room.players.findIndex(p => p.id === room.winnerId && p.isAlive && !p.isBankrupt);
+    room.turnIndex = winnerIndex !== -1 ? winnerIndex : -1;
+    startNextTurn(room);
+
+    io.to(room.id).emit('global_message', `📣 라운드 ${room.round} 시작! 기준 베팅금: $${room.currentBet}`);
+    io.to(room.id).emit('room_state_update', room);
 }
 
 io.on('connection', (socket) => {
@@ -255,6 +342,10 @@ io.on('connection', (socket) => {
             const room = rooms.get(roomId);
             const player = room.players.find(p => p.id === socket.id);
             if (player && player.isHost) {
+                if (room.bettingTimeout) {
+                    clearTimeout(room.bettingTimeout);
+                    room.bettingTimeout = null;
+                }
                 room.status = 'playing';
                 room.phase = 'playing';
                 room.round = 1;
@@ -302,6 +393,12 @@ io.on('connection', (socket) => {
         if (roomId && rooms.has(roomId)) {
             const room = rooms.get(roomId);
 
+            if (room.bettingTimeout) {
+                clearTimeout(room.bettingTimeout);
+                room.bettingTimeout = null;
+            }
+            clearTurnTimeout(room);
+
             // 방 상태 초기화
             room.status = 'waiting';
             room.phase = 'playing';
@@ -348,48 +445,7 @@ io.on('connection', (socket) => {
 
             // 지정 권한 확인
             if (player && player.id === room.winnerId && room.phase === 'betting') {
-                room.currentBet = betAmount;
-                room.round += 1;
-                room.phase = 'playing';
-                room.pot = 0;
-
-                room.players.forEach(p => {
-                    if (p.isBankrupt) return; // 이미 영구 파산한 사람은 대상 외
-
-                    // 새 라운드 베팅금액 미달일 시 영구파산
-                    if (p.money < room.currentBet) {
-                        p.isBankrupt = true;
-                        p.isAlive = false;
-                        room.bankruptCount += 1;
-                        p.bankruptOrder = room.bankruptCount;
-                        io.to(roomId).emit('global_message', `📉 ${p.name}님이 베팅금액($${room.currentBet})을 내지 못해 파산했습니다!`);
-                    } else {
-                        // 새 라운드 시작 복구
-                        p.isAlive = true;
-                        p.prob = Math.floor(Math.random() * (45 - 10 + 1)) + 10;
-                        p.passive = '유지';
-
-                        const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
-                        p.activeCard = ALL_CARDS[Math.floor(Math.random() * ALL_CARDS.length)];
-
-                        p.hasVest = false;
-                        p.hasRobber = false;
-                        p.hasSponsor = 0;
-                        p.isMeditation = false;
-                        p.hasInsurance = 0;
-                        p.hasExtraTurn = false;
-                        p.hasCurse = false;
-                        p.maxProb = 66;
-                    }
-                });
-
-                room.turnDirection = 1;
-                const winnerIndex = room.players.findIndex(p => p.id === room.winnerId);
-                room.turnIndex = winnerIndex !== -1 ? winnerIndex : -1;
-                startNextTurn(room);
-
-                io.to(roomId).emit('global_message', `📣 라운드 ${room.round} 시작! 기준 베팅금: $${room.currentBet}`);
-                io.to(roomId).emit('room_state_update', room);
+                processNextRoundStart(room, betAmount, io);
             }
         }
     });
@@ -638,18 +694,46 @@ io.on('connection', (socket) => {
 
         if (roomId && rooms.has(roomId)) {
             const room = rooms.get(roomId);
+            const disconnectedPlayerIndex = room.players.findIndex(p => p.id === socket.id);
+            const isTurnPlayer = room.status === 'playing' && disconnectedPlayerIndex === room.turnIndex;
+
             room.players = room.players.filter(p => p.id !== socket.id);
 
             if (room.players.length === 0) {
                 // 방에 아무도 없으면 폭파
+                clearTurnTimeout(room);
+                if (room.bettingTimeout) clearTimeout(room.bettingTimeout);
                 rooms.delete(roomId);
                 console.log(`[삭제] [${roomId}] 빈 방 삭제`);
             } else {
                 // 남은 유저가 있고, 나간 유저가 방장(Host)이었다면 호스트 넘겨주기
                 const hasHost = room.players.some(p => p.isHost);
+                let newHost = null;
                 if (!hasHost) {
                     room.players[0].isHost = true;
+                    newHost = room.players[0];
                 }
+
+                // 나간 유저가 우승자(베팅 권한자)였고 베팅 페이즈라면 권한 이양
+                if (room.phase === 'betting' && room.winnerId === socket.id) {
+                    const host = newHost || room.players.find(p => p.isHost);
+                    room.winnerId = host ? host.id : null;
+                    io.to(roomId).emit('global_message', `🔄 승리자가 퇴장하여 베팅 권한이 방장에게 넘어갔습니다.`);
+                }
+
+                if (room.status === 'playing') {
+                    if (isTurnPlayer) {
+                        io.to(roomId).emit('global_message', `🏃 턴 진행자가 퇴장하여 턴이 강제로 넘어갑니다.`);
+                        if (room.turnDirection === 1) {
+                            room.turnIndex -= 1;
+                        }
+                        if (room.turnIndex < 0) room.turnIndex = Math.max(0, room.players.length - 1);
+                        startNextTurn(room);
+                    } else if (disconnectedPlayerIndex > -1 && disconnectedPlayerIndex < room.turnIndex) {
+                        room.turnIndex -= 1;
+                    }
+                }
+
                 io.to(roomId).emit('room_state_update', room);
             }
             // 방 폭파 또는 인원 감소로 상태가 변했으므로 방 목록 브로드캐스트

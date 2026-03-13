@@ -30,11 +30,16 @@ export default function InGame() {
     const [isShaking, setIsShaking] = useState(false);
     const [flashColor, setFlashColor] = useState<'transparent' | 'red' | 'white'>('transparent');
 
+    // 버프에 마우스를 올렸을 때 보여줄 툴팁 정보
+    const [hoveredBuffTooltip, setHoveredBuffTooltip] = useState<{ id: string, name: ActiveCardType | '패시브 명상', desc: string, x: number, y: number } | null>(null);
+
     // 내 화면용 거대 커서 좌표 (64x64 렌더링용)
     const [myCursorPos, setMyCursorPos] = useState({ x: 0, y: 0 });
 
     // 다음 라운드 선택할 베팅 금액
     const [nextBet, setNextBet] = useState(15);
+    const [timeLeft, setTimeLeft] = useState(10);
+    const [turnTimerDisplay, setTurnTimerDisplay] = useState<number | null>(null);
 
     // 라운드 종료 후 베팅 페이즈 진입 시, 라운드에 맞는 기본 베팅금 자동 세팅
     useEffect(() => {
@@ -42,8 +47,31 @@ export default function InGame() {
             const nextRound = roomState.round + 1;
             // 2라운드=15, 3라운드=20, 4라운드=25
             setNextBet(5 + (nextRound * 5));
+            setTimeLeft(10);
+
+            const timer = setInterval(() => {
+                setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
+            }, 1000);
+            return () => clearInterval(timer);
         }
     }, [roomState?.phase, roomState?.round]);
+
+    // 턴 타임아웃 15초 카운트다운 로직
+    useEffect(() => {
+        let frameId: number;
+        const updateTimer = () => {
+            if (roomState?.status === 'playing' && (roomState as any).turnEndTime) {
+                const now = Date.now();
+                const diff = Math.max(0, Math.ceil(((roomState as any).turnEndTime - now) / 1000));
+                setTurnTimerDisplay(diff);
+            } else {
+                setTurnTimerDisplay(null);
+            }
+            frameId = requestAnimationFrame(updateTimer);
+        };
+        frameId = requestAnimationFrame(updateTimer);
+        return () => cancelAnimationFrame(frameId);
+    }, [roomState?.status, (roomState as any)?.turnEndTime]);
 
     useEffect(() => {
         if (!socket) return;
@@ -195,6 +223,22 @@ export default function InGame() {
         }
     };
 
+    // 버프 툴팁 마우스 이벤트 핸들러
+    const handleBuffMouseEnter = (e: React.MouseEvent, buffName: ActiveCardType | '패시브 명상', buffDesc: string) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setHoveredBuffTooltip({
+            id: buffName,
+            name: buffName,
+            desc: buffDesc,
+            x: rect.left + rect.width / 2,
+            y: rect.top - 10
+        });
+    };
+
+    const handleBuffMouseLeave = () => {
+        setHoveredBuffTooltip(null);
+    };
+
     // 타겟 모드일 때 특정 유저를 클릭
     const handleTargetClick = (player: Player) => {
         if (!isMyTurn || !player.isAlive || player.name === username) return;
@@ -291,9 +335,10 @@ export default function InGame() {
                                 </div>
                                 <button
                                     onClick={() => socket?.emit('next_round_start', { betAmount: nextBet })}
-                                    className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-dark-900 font-black text-xl rounded-xl shadow border-b-4 border-yellow-700 active:translate-y-1 active:border-b-0 transition-all"
+                                    className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-dark-900 font-black text-xl rounded-xl shadow border-b-4 border-yellow-700 active:translate-y-1 active:border-b-0 transition-all flex flex-col items-center justify-center gap-1"
                                 >
-                                    다음 라운드 시작 수락
+                                    <span>다음 라운드 시작 수락</span>
+                                    <span className="text-sm font-bold opacity-80">({timeLeft}초 뒤 자동 시작)</span>
                                 </button>
                             </div>
                         ) : (
@@ -308,7 +353,7 @@ export default function InGame() {
                                 ) : (
                                     <p className="text-2xl font-bold text-gray-300">방장이 다음 라운드를 세팅 중입니다...</p>
                                 )}
-                                <div className="mt-8 text-yellow-500 font-bold animate-pulse text-xl tracking-widest">잠시만 기다려주세요</div>
+                                <div className="mt-8 text-yellow-500 font-bold animate-pulse text-xl tracking-widest">{timeLeft}초 뒤 자동 시작</div>
                             </div>
                         )}
                     </motion.div>
@@ -323,7 +368,7 @@ export default function InGame() {
             </div>
 
             {/* 우측 상단: 게임 진행 설명 패널 (크기 축소 및 위치 이동) */}
-            <div className="absolute right-4 top-4 z-20 w-56 bg-dark-800/60 backdrop-blur-sm p-3 rounded-lg border border-gray-700/50 shadow-lg flex flex-col gap-2 pointer-events-none opacity-80 hover:opacity-100 transition-opacity">
+            <div className="absolute right-4 top-4 z-20 w-64 bg-dark-800/60 backdrop-blur-sm p-3 rounded-lg border border-gray-700/50 shadow-lg flex flex-col gap-2 pointer-events-auto opacity-80 hover:opacity-100 transition-opacity">
                 <h3 className="text-primary-500 font-bold border-b border-gray-600/50 pb-1 mb-1 flex items-center gap-1 text-sm">
                     <AlertTriangle size={14} /> 가이드
                 </h3>
@@ -333,9 +378,23 @@ export default function InGame() {
                 <p className="text-gray-300 text-xs leading-snug">
                     • <span className="text-yellow-400">액티브 사용</span> ➔ 턴 유지
                 </p>
-                <p className="text-gray-300 text-xs leading-snug">
+                <p className="text-gray-300 text-xs leading-snug border-b border-gray-600/50 pb-2 mb-1">
                     • <span className="text-green-400">패시브 변경</span> ➔ 언제든 조작
                 </p>
+                <div className="text-gray-400 text-[10px] leading-tight flex flex-col gap-1">
+                    <p>원작자: 일곱토</p>
+                    <p>
+                        제작자 github: <br/>
+                        <a 
+                            href="https://github.com/may0na1se/gunman_theory" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 underline break-all"
+                        >
+                            https://github.com/may0na1se/gunman_theory
+                        </a>
+                    </p>
+                </div>
             </div>
 
             {/* 플레이어 렌더링 영역 (Top 4, Bottom 4) */}
@@ -411,26 +470,32 @@ export default function InGame() {
             {/* 턴 액션 바 (내 턴일 때 중앙 하단) */}
             <div className="flex-1 flex flex-col items-center justify-center w-full my-8 relative pointer-events-none">
                 {isMyTurn ? (
-                    <div className="fixed bottom-8 z-30 flex gap-4 animate-bounce bg-dark-800 p-4 rounded-2xl border-2 border-primary-500 shadow-2xl pointer-events-auto">
-                        <button
-                            onClick={handleDrawCard}
-                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-xl shadow border border-blue-400 transition-colors flex items-center justify-center gap-2"
-                        >
-                            새 액티브 카드 받기
-                        </button>
-                        <button
-                            onClick={() => {
-                                setIsShootingMode(!isShootingMode);
-                                setActiveCardMode(null);
-                            }}
-                            className={`${isShootingMode ? 'bg-red-600 hover:bg-red-500 ring-4 ring-red-400' : 'bg-red-500 hover:bg-red-400'} text-white font-bold py-3 px-8 rounded-xl shadow border border-red-400 transition-colors flex items-center justify-center gap-2`}
-                        >
-                            <span>🎯 {isShootingMode ? '사격 취소' : '사격하기'}</span>
-                        </button>
+                    <div className="fixed bottom-8 z-30 flex flex-col gap-2 items-center animate-bounce bg-dark-800 p-4 rounded-2xl border-2 border-primary-500 shadow-2xl pointer-events-auto">
+                        <div className="text-yellow-400 font-bold mb-1 tracking-widest text-sm">
+                            내 턴! ({turnTimerDisplay ?? 20}초 남음)
+                        </div>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={handleDrawCard}
+                                className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-xl shadow border border-blue-400 transition-colors flex items-center justify-center gap-2"
+                            >
+                                새 액티브 카드 받기
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsShootingMode(!isShootingMode);
+                                    setActiveCardMode(null);
+                                }}
+                                className={`${isShootingMode ? 'bg-red-600 hover:bg-red-500 ring-4 ring-red-400' : 'bg-red-500 hover:bg-red-400'} text-white font-bold py-3 px-8 rounded-xl shadow border border-red-400 transition-colors flex items-center justify-center gap-2`}
+                            >
+                                <span>🎯 {isShootingMode ? '사격 취소' : '사격하기'}</span>
+                            </button>
+                        </div>
                     </div>
                 ) : (
-                    <div className="fixed bottom-8 z-30 flex gap-4 animate-bounce bg-dark-800 p-4 rounded-2xl border-2 border-gray-700 shadow-2xl pointer-events-auto">
+                    <div className="fixed bottom-8 z-30 flex flex-col items-center gap-2 animate-bounce bg-dark-800 p-4 rounded-2xl border-2 border-gray-700 shadow-2xl pointer-events-auto">
                         <p className="text-gray-400 font-bold text-lg">다른 플레이어의 턴입니다.</p>
+                        <p className="text-yellow-500 font-bold text-sm tracking-widest">({turnTimerDisplay ?? 20}초 남음)</p>
                     </div>
                 )}
             </div>
@@ -527,14 +592,62 @@ export default function InGame() {
                                     <span className="text-gray-400 text-sm font-bold w-full text-center border-b border-gray-700 pb-2 mb-2">활성화된 버프</span>
                                     <div className="flex flex-wrap gap-2 justify-center w-full overflow-y-auto pb-1 mt-1">
                                         {/* 버프 목록 렌더링 */}
-                                        {me.hasVest && <span className="text-xs font-bold text-white bg-blue-900/50 border border-blue-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🛡️ 방탄복</span>}
-                                        {me.hasRobber && <span className="text-xs font-bold text-white bg-indigo-900/50 border border-indigo-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💰 강도</span>}
-                                        {me.hasSponsor > 0 && <span className="text-xs font-bold text-white bg-green-900/50 border border-green-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🤝 후원자 B x{me.hasSponsor}</span>}
-                                        {me.isMeditation && <span className="text-xs font-bold text-white bg-purple-900/50 border border-purple-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🧘 명상</span>}
-                                        {me.hasInsurance > 0 && <span className="text-xs font-bold text-white bg-teal-900/50 border border-teal-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🏥 생명보험 x{me.hasInsurance}</span>}
-                                        {me.hasExtraTurn && <span className="text-xs font-bold text-white bg-red-900/50 border border-red-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">🩸 발악</span>}
-                                        {me.hasCurse && <span className="text-xs font-bold text-white bg-stone-900/50 border border-stone-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">☠️ 저주 탄환</span>}
-                                        {me.maxProb === 75 && <span className="text-xs font-bold text-white bg-orange-900/50 border border-orange-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1">💊 탄약병</span>}
+                                        {me.hasVest && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '방탄복', CARD_INFO['방탄복'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-blue-900/50 border border-blue-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >🛡️ 방탄복</span>
+                                        )}
+                                        {me.hasRobber && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '강도', CARD_INFO['강도'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-indigo-900/50 border border-indigo-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >💰 강도</span>
+                                        )}
+                                        {me.hasSponsor > 0 && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '후원자 B', CARD_INFO['후원자 B'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-green-900/50 border border-green-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >🤝 후원자 B x{me.hasSponsor}</span>
+                                        )}
+                                        {me.isMeditation && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '패시브 명상', CARD_INFO['명상'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-purple-900/50 border border-purple-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >🧘 명상</span>
+                                        )}
+                                        {me.hasInsurance > 0 && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '보험', CARD_INFO['보험'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-teal-900/50 border border-teal-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >🏥 생명보험 x{me.hasInsurance}</span>
+                                        )}
+                                        {me.hasExtraTurn && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '발악', CARD_INFO['발악'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-red-900/50 border border-red-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >🩸 발악</span>
+                                        )}
+                                        {me.hasCurse && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '저주', CARD_INFO['저주'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-stone-900/50 border border-stone-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >☠️ 저주 탄환</span>
+                                        )}
+                                        {me.maxProb === 75 && (
+                                            <span
+                                                onMouseEnter={(e) => handleBuffMouseEnter(e, '탄약병', CARD_INFO['탄약병'].desc)}
+                                                onMouseLeave={handleBuffMouseLeave}
+                                                className="text-xs font-bold text-white bg-orange-900/50 border border-orange-500 px-2 py-1 rounded-md shadow-sm flex items-center gap-1 cursor-help"
+                                            >💊 탄약병</span>
+                                        )}
 
                                         {!(me.hasVest || me.hasRobber || me.hasSponsor > 0 || me.isMeditation || me.hasInsurance > 0 || me.hasExtraTurn || me.hasCurse || me.maxProb === 75) && (
                                             <span className="text-gray-500 text-xs mt-2 italic flex items-center gap-1"><span className="opacity-50">없음</span></span>
@@ -625,6 +738,30 @@ export default function InGame() {
                                 <p className="text-yellow-500 text-sm animate-pulse">잠시만 기다려주세요</p>
                             </div>
                         )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* 버프 툴팁 (마우스 오버 시 렌더링) */}
+            <AnimatePresence>
+                {hoveredBuffTooltip && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                        transition={{ duration: 0.15 }}
+                        className="fixed z-[999] bg-dark-800/95 border border-primary-500 p-3 rounded-lg shadow-[0_5px_20px_rgba(0,0,0,0.8)] pointer-events-none w-56 flex flex-col gap-1"
+                        style={{
+                            left: `${hoveredBuffTooltip.x}px`,
+                            top: `${hoveredBuffTooltip.y}px`,
+                            transform: 'translate(-50%, -100%)'
+                        }}
+                    >
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-primary-500" />
+                        <span className="text-primary-500 font-black text-sm">{hoveredBuffTooltip.name}</span>
+                        <p className="text-gray-300 text-xs leading-relaxed break-keep">
+                            {hoveredBuffTooltip.desc}
+                        </p>
                     </motion.div>
                 )}
             </AnimatePresence>
