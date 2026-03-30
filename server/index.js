@@ -284,12 +284,13 @@ io.on('connection', (socket) => {
         const existingPlayerIndex = room.players.findIndex(p => p.id === socket.id);
         if (existingPlayerIndex >= 0) {
             room.players[existingPlayerIndex].name = username;
+            room.players[existingPlayerIndex].ready = true;
         } else {
             room.players.push({
                 id: socket.id,
                 name: username,
                 isHost: room.players.length === 0,
-                ready: false,
+                ready: true,
                 money: 200,
                 prob: 0,
                 isAlive: true,
