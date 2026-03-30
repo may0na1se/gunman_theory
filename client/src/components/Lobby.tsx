@@ -5,16 +5,40 @@ export default function Lobby() {
     const { socket, isConnected, setUsername, setRoomId, roomList } = useGameStore();
     const [nameInput, setNameInput] = useState('');
     const [roomInput, setRoomInput] = useState('');
+    const [nameError, setNameError] = useState('');
 
     const handleJoin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!nameInput.trim() || !roomInput.trim() || !socket || !isConnected) return;
+        if (!nameInput.trim()) {
+            setNameError('닉네임을 입력하세요!');
+            return;
+        }
+        setNameError('');
+
+        if (!roomInput.trim() || !socket || !isConnected) {
+            return;
+        }
 
         setUsername(nameInput);
         setRoomId(roomInput);
 
         // 서버로 방 입장 요청
         socket.emit('join_room', { roomId: roomInput, username: nameInput });
+    };
+
+    const handleJoinRoom = (targetRoomId: string) => {
+        if (!nameInput.trim()) {
+            setNameError('닉네임을 입력하세요!');
+            return;
+        }
+        setNameError('');
+        if (!socket || !isConnected) return;
+
+        setUsername(nameInput);
+        setRoomId(targetRoomId);
+        setRoomInput(targetRoomId);
+
+        socket.emit('join_room', { roomId: targetRoomId, username: nameInput });
     };
 
     return (
@@ -36,10 +60,16 @@ export default function Lobby() {
                                 maxLength={10}
                                 required
                                 value={nameInput}
-                                onChange={e => setNameInput(e.target.value)}
-                                className="w-full bg-dark-900 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                                onChange={e => {
+                                    setNameInput(e.target.value);
+                                    if (nameError) setNameError('');
+                                }}
+                                className={`w-full bg-dark-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 transition-all ${nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-600 focus:border-primary-500 focus:ring-primary-500'}`}
                                 placeholder="멋진 이름을 지어주세요"
                             />
+                            {nameError && (
+                                <p className="mt-2 text-sm font-medium text-red-400">{nameError}</p>
+                            )}
                         </div>
 
                         <div>
@@ -91,7 +121,7 @@ export default function Lobby() {
                                             alert('방이 꽉 찼습니다.');
                                             return;
                                         }
-                                        setRoomInput(room.id);
+                                        handleJoinRoom(room.id);
                                     }}
                                     className={`
                                         flex items-center justify-between p-4 rounded-xl border transition-all

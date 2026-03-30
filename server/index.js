@@ -16,6 +16,18 @@ const io = new Server(httpServer, {
 
 const rooms = new Map();
 
+function getSerializableRoom(room) {
+    const { turnTimeout, bettingTimeout, ...safeRoom } = room;
+    return {
+        ...safeRoom,
+        players: room.players.map(player => ({ ...player }))
+    };
+}
+
+function emitRoomState(roomId, room) {
+    io.to(roomId).emit('room_state_update', getSerializableRoom(room));
+}
+
 // 턴 타이머 초기화 유틸
 function clearTurnTimeout(room) {
     if (room.turnTimeout) {
@@ -62,7 +74,7 @@ function startNextTurn(room) {
             });
 
             io.to(room.id).emit('global_message', `[최종 결과] 모든 라운드 종료! 진정한 총잡이가 가려졌습니다.`);
-            io.to(room.id).emit('room_state_update', room);
+            emitRoomState(room.id, room);
             io.to(room.id).emit('game_over', { rankings: sortedPlayers });
             return;
         } else {
@@ -73,7 +85,7 @@ function startNextTurn(room) {
                 const host = room.players.find(p => p.isHost);
                 room.winnerId = host ? host.id : null;
             }
-            io.to(room.id).emit('room_state_update', room);
+            emitRoomState(room.id, room);
 
             // 10초 후 자동 다음 라운드 시작
             room.bettingTimeout = setTimeout(() => {
@@ -153,7 +165,7 @@ function startNextTurn(room) {
                 io.to(room.id).emit('global_message', `💀 [파산] ${cp.name}님이 판돈 지불에 실패하여 파산했습니다!`);
             }
             startNextTurn(room);
-            io.to(room.id).emit('room_state_update', room);
+            emitRoomState(room.id, room);
         }
     }, 20000);
 }
@@ -237,7 +249,7 @@ function processNextRoundStart(room, betAmount, io) {
     startNextTurn(room);
 
     io.to(room.id).emit('global_message', `📣 라운드 ${room.round} 시작! 기준 베팅금: $${room.currentBet}`);
-    io.to(room.id).emit('room_state_update', room);
+    emitRoomState(room.id, room);
 }
 
 io.on('connection', (socket) => {
@@ -317,7 +329,7 @@ io.on('connection', (socket) => {
         console.log(`[입장] [${roomId}] 방에 ${username}(${socket.id}) 입장`);
 
         // 방 안의 모든 유저에게 새로운 방 상태 브로드캐스트
-        io.to(roomId).emit('room_state_update', room);
+        emitRoomState(roomId, room);
 
         // 방 참가 또는 방 신규 생성으로 인원수/상태가 변했으므로 로비 유저들에게도 목록 업데이트
         broadcastRooms();
@@ -331,7 +343,7 @@ io.on('connection', (socket) => {
             const player = room.players.find(p => p.id === socket.id);
             if (player) {
                 player.ready = !player.ready;
-                io.to(roomId).emit('room_state_update', room);
+                emitRoomState(roomId, room);
             }
         }
     });
@@ -383,7 +395,7 @@ io.on('connection', (socket) => {
                 startNextTurn(room);
 
                 console.log(`[게임 시작] [${roomId}] 게임이 시작되었습니다.`);
-                io.to(roomId).emit('room_state_update', room);
+                emitRoomState(roomId, room);
             }
         }
     });
@@ -433,7 +445,7 @@ io.on('connection', (socket) => {
 
             console.log(`[다시하기] [${roomId}] 방 데이터가 초기화되었습니다.`);
             io.to(roomId).emit('global_message', '🔄 게임이 초기화되었습니다. 모두 대기실로 돌아갑니다.');
-            io.to(roomId).emit('room_state_update', room);
+            emitRoomState(roomId, room);
         }
     });
 
@@ -459,7 +471,7 @@ io.on('connection', (socket) => {
             const player = room.players.find(p => p.id === socket.id);
             if (player && ['증가', '유지', '감소'].includes(stance)) {
                 player.passive = stance;
-                io.to(roomId).emit('room_state_update', room);
+                emitRoomState(roomId, room);
             }
         }
     });
@@ -551,7 +563,7 @@ io.on('connection', (socket) => {
                         startNextTurn(room);
                     }
 
-                    io.to(roomId).emit('room_state_update', room);
+                    emitRoomState(roomId, room);
                 }
             }
         }
@@ -583,7 +595,7 @@ io.on('connection', (socket) => {
                     startNextTurn(room);
                 }
 
-                io.to(roomId).emit('room_state_update', room);
+                emitRoomState(roomId, room);
             }
         }
     });
@@ -677,7 +689,7 @@ io.on('connection', (socket) => {
         }
 
         // 턴을 넘기지 않으므로, 정보(확률, 아이템 등)만 갱신해서 브로드캐스트
-        io.to(roomId).emit('room_state_update', room);
+        emitRoomState(roomId, room);
     });
 
     // 연결 해제 로직
@@ -735,7 +747,7 @@ io.on('connection', (socket) => {
                     }
                 }
 
-                io.to(roomId).emit('room_state_update', room);
+                emitRoomState(roomId, room);
             }
             // 방 폭파 또는 인원 감소로 상태가 변했으므로 방 목록 브로드캐스트
             broadcastRooms();
