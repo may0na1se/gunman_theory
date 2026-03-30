@@ -55,3 +55,12 @@
 * **UI 개선:** 활성화된 버프 목록에서 중첩 수치가 직관적으로 표시되도록 개선되었습니다 (예: 🤝 후원자 B x2).
 
 
+---
+### 0330 패치 노트
+
+**게임 BGM 추가**
+
+Kevin MacLeod - [Hitman](https://www.youtube.com/watch?v=U0TJQGnTUxg)
+
+Kevin MacLeod - [Mechanolith](https://www.youtube.com/watch?v=WJhsqcJ6Hoo)
+
