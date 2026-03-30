@@ -23,14 +23,8 @@ export default function Room() {
     };
 
     const handleStartGame = () => {
-        // 최소 3명 이상, 본인 제외 모두 준비완료 상태인지 체크
-        // 임시로 그냥 시작 가능하게 하거나, 준비된 인원 검증 로직 추가 (기획엔 없었지만 구색맞추기)
-        const allOthersReady = roomState.players.filter(p => p.id !== myPlayer?.id).every(p => p.ready);
-        if (socket && allOthersReady) {
-            socket.emit('start_game');
-        } else {
-            alert('모든 플레이어가 준비를 완료해야 합니다.');
-        }
+        if (!socket || roomState.status !== 'waiting') return;
+        socket.emit('start_game');
     };
 
     // 최대 8명까지 자리 렌더링용 배열 (빈자리 포함)
@@ -107,12 +101,12 @@ export default function Room() {
                         <Check size={24} /> {myPlayer?.ready ? '준비 취소' : '준비 완료'}
                     </button>
                 ) : (
-                    <button
-                        onClick={handleStartGame}
-                        disabled={roomState.players.length < 3}
-                        className={`flex-1 py-4 font-bold rounded-xl text-lg flex items-center justify-center gap-2 transition-colors 
+                        <button
+                            onClick={handleStartGame}
+                            disabled={roomState.players.length < 3}
+                            className={`flex-1 py-4 font-bold rounded-xl text-lg flex items-center justify-center gap-2 transition-colors 
               ${roomState.players.length >= 3 ? 'bg-primary-500 hover:bg-yellow-400 text-dark-900' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
-                    >
+                        >
                         게임 시작 (최소 3명)
                     </button>
                 )}

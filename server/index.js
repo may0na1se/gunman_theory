@@ -354,7 +354,13 @@ io.on('connection', (socket) => {
         if (roomId && rooms.has(roomId)) {
             const room = rooms.get(roomId);
             const player = room.players.find(p => p.id === socket.id);
-            if (player && player.isHost) {
+            if (player && player.isHost && room.status === 'waiting') {
+                const notReadyPlayers = room.players.filter(p => !p.ready).map(p => p.name);
+                if (notReadyPlayers.length > 0) {
+                    io.to(roomId).emit('global_message', `⚠️ 아직 준비 안 된 플레이어: ${notReadyPlayers.join(', ')}`);
+                    return;
+                }
+
                 if (room.bettingTimeout) {
                     clearTimeout(room.bettingTimeout);
                     room.bettingTimeout = null;

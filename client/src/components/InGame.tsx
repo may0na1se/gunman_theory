@@ -420,7 +420,7 @@ export default function InGame() {
                     >
                         <div className="w-32 h-32 rounded-full border-4 border-yellow-500 bg-dark-800 flex items-center justify-center shadow-[0_0_30px_rgba(234,179,8,0.3)] backdrop-blur-sm">
                             <div className="text-center">
-                                <span className="text-gray-400 text-sm font-bold tracking-widest uppercase mb-1">판돈 (Pot)</span>
+                                <span className="text-gray-400 text-sm font-bold tracking-widest uppercase mb-1">판돈</span>
                                 <span className="text-5xl font-black text-yellow-500">${roomState.pot}</span>
                             </div>
                         </div>
