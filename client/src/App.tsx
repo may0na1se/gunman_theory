@@ -5,6 +5,7 @@ import Lobby from './components/Lobby';
 import Room from './components/Room';
 import InGame from './components/InGame';
 import Chat from './components/Chat';
+import BgmController from './components/BgmController';
 
 // 환경 변수나 로컬 스토리지 등에 따라 URL 분기 가능
 // 우선 로컬 개발환경 서버 주소 적용 (외부 접속 테스트를 위해 IP로 변경)
@@ -50,6 +51,7 @@ function App() {
 
   return (
     <>
+      <BgmController />
       {/* roomState가 없으면 로비 UI, 상태에 따라 대기방 또는 인게임 UI 렌더링 */}
       {!roomState ? (
         <Lobby />
