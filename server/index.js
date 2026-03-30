@@ -703,7 +703,9 @@ io.on('connection', (socket) => {
     socket.on('send_chat', ({ message }) => {
         const roomId = socket.data.roomId;
         if (roomId && rooms.has(roomId)) {
-            io.to(roomId).emit('global_message', `💬 [${socket.data.username}] ${message}`);
+            const sanitizedMessage = String(message ?? '').trim().slice(0, 20);
+            if (!sanitizedMessage) return;
+            io.to(roomId).emit('global_message', `💬 [${socket.data.username}] ${sanitizedMessage}`);
         }
     });
 

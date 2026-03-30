@@ -32,7 +32,7 @@ export default function Chat() {
     const handleSendChat = (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatInput.trim() || !socket) return;
-        socket.emit('send_chat', { message: chatInput.trim() });
+        socket.emit('send_chat', { message: chatInput.trim().slice(0, 20) });
         setChatInput('');
     };
 
@@ -66,7 +66,7 @@ export default function Chat() {
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
                     placeholder="채팅 치기..."
-                    maxLength={50}
+                    maxLength={20}
                     className="flex-1 bg-dark-800/80 text-white text-xs px-3 py-2 rounded border border-gray-600 outline-none focus:border-primary-500"
                 />
                 <button type="submit" className="bg-primary-500 text-dark-900 text-xs font-bold px-3 py-2 rounded hover:bg-yellow-400 transition-colors">

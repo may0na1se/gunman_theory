@@ -513,10 +513,10 @@ export default function InGame() {
                                 initial={{ y: 100, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 exit={{ y: 100, opacity: 0 }}
-                                className="fixed bottom-4 left-4 z-40 flex gap-4 bg-dark-800/90 p-5 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-48"
+                                className="fixed bottom-4 left-4 z-40 flex gap-4 bg-dark-800/90 p-4 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-44"
                             >
                                 {/* 패시브 조작 영역 */}
-                                <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-44 shadow-inner">
+                                <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-3 rounded-xl w-44 shadow-inner">
                                     <div className="text-center w-full mb-2">
                                         <span className="text-gray-400 text-xs font-bold block mb-1">격발 확률 (클릭해서 조정)</span>
                                         <div className="bg-dark-800 text-white font-black py-1 px-3 rounded-md border border-gray-600 text-sm flex items-center justify-center gap-1 shadow-inner">
@@ -546,7 +546,7 @@ export default function InGame() {
                                 </div>
 
                                 {/* 액티브 카드 정보 영역 */}
-                                <div className="flex flex-col justify-between flex-1 min-w-[280px] max-w-[360px] bg-dark-900 border border-blue-900/50 p-4 rounded-xl shadow-inner relative">
+                                <div className="flex flex-col justify-between flex-1 min-w-[280px] max-w-[360px] bg-dark-900 border border-blue-900/50 p-3 rounded-xl shadow-inner relative">
                                     <div>
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-blue-400 text-sm font-bold">액티브 카드</span>
@@ -586,9 +586,9 @@ export default function InGame() {
                                 initial={{ y: 100, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 exit={{ y: 100, opacity: 0 }}
-                                className="fixed bottom-4 right-4 z-40 flex gap-4 bg-dark-800/90 p-5 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-48"
+                                className="fixed bottom-4 right-4 z-40 flex gap-4 bg-dark-800/90 p-4 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-44"
                             >
-                                <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-64 shadow-inner h-full">
+                                <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-3 rounded-xl w-64 shadow-inner h-full">
                                     <span className="text-gray-400 text-sm font-bold w-full text-center border-b border-gray-700 pb-2 mb-2">활성화된 버프</span>
                                     <div className="flex flex-wrap gap-2 justify-center w-full overflow-y-auto pb-1 mt-1">
                                         {/* 버프 목록 렌더링 */}
