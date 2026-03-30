@@ -370,7 +370,7 @@ export default function InGame() {
             {/* 우측 상단: 게임 진행 설명 패널 (크기 축소 및 위치 이동) */}
             <div className="absolute right-4 top-4 z-20 w-64 bg-dark-800/60 backdrop-blur-sm p-3 rounded-lg border border-gray-700/50 shadow-lg flex flex-col gap-2 pointer-events-auto opacity-80 hover:opacity-100 transition-opacity">
                 <h3 className="text-primary-500 font-bold border-b border-gray-600/50 pb-1 mb-1 flex items-center gap-1 text-sm">
-                    <AlertTriangle size={14} /> 가이드
+                    <AlertTriangle size={14} /> 도움말
                 </h3>
                 <p className="text-gray-300 text-xs leading-snug">
                     • <span className="text-red-400">사격</span>/ <span className="text-blue-400">카드받기</span> ➔ 턴 종료
@@ -379,7 +379,7 @@ export default function InGame() {
                     • <span className="text-yellow-400">액티브 사용</span> ➔ 턴 유지
                 </p>
                 <p className="text-gray-300 text-xs leading-snug border-b border-gray-600/50 pb-2 mb-1">
-                    • <span className="text-green-400">패시브 변경</span> ➔ 언제든 조작
+                    • <span className="text-green-400">격발 확률 변경</span> ➔ 언제든 조작
                 </p>
                 <div className="text-gray-400 text-[10px] leading-tight flex flex-col gap-1">
                     <p>원작자: 일곱토</p>
@@ -420,12 +420,12 @@ export default function InGame() {
                     >
                         <div className="w-32 h-32 rounded-full border-4 border-yellow-500 bg-dark-800 flex items-center justify-center shadow-[0_0_30px_rgba(234,179,8,0.3)] backdrop-blur-sm">
                             <div className="text-center">
-                                <span className="text-gray-400 text-sm font-bold tracking-widest uppercase mb-1">판돈</span>
+                                {/* <span className="text-gray-400 text-sm font-bold tracking-widest uppercase mb-1">판돈</span> */}
                                 <span className="text-5xl font-black text-yellow-500">${roomState.pot}</span>
                             </div>
                         </div>
                         <div className="mt-4 bg-dark-900 px-4 py-1 rounded-full text-sm text-gray-500 font-bold tracking-widest">
-                            {roomState.turnDirection === 1 ? '↻ 시계 방향 턴' : '↺ 반시계 방향 턴'}
+                            {/* {roomState.turnDirection === 1 ? '↻ 시계 방향 턴' : '↺ 반시계 방향 턴'} */}판돈
                         </div>
                     </motion.div>
 
@@ -518,7 +518,7 @@ export default function InGame() {
                                 {/* 패시브 조작 영역 */}
                                 <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-4 rounded-xl w-44 shadow-inner">
                                     <div className="text-center w-full mb-2">
-                                        <span className="text-gray-400 text-xs font-bold block mb-1">패시브 (클릭해서 조정)</span>
+                                        <span className="text-gray-400 text-xs font-bold block mb-1">격발 확률 (클릭해서 조정)</span>
                                         <div className="bg-dark-800 text-white font-black py-1 px-3 rounded-md border border-gray-600 text-sm flex items-center justify-center gap-1 shadow-inner">
                                             현재: {me.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : me.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
                                         </div>

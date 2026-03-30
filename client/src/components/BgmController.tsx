@@ -94,28 +94,33 @@ export default function BgmController() {
     }, []);
 
     return (
-        <div className="fixed left-4 bottom-4 z-[700] flex items-center gap-3 rounded-2xl border border-gray-700 bg-dark-900/80 px-4 py-3 shadow-2xl backdrop-blur-md">
-            {volume > 0 ? (
-                <Volume2 size={18} className="text-primary-500" />
-            ) : (
-                <VolumeX size={18} className="text-gray-400" />
-            )}
-            <div className="flex min-w-44 flex-col gap-1">
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">BGM</span>
-                <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={Math.round(volume * 100)}
-                    onChange={(event) => setVolume(Number(event.target.value) / 100)}
-                    className="h-2 cursor-pointer appearance-none rounded-lg bg-gray-700 accent-primary-500"
-                    aria-label="BGM volume"
-                />
+        <div className="group fixed right-72 top-4 z-[700]">
+            <button
+                type="button"
+                className="flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-700 bg-dark-900/85 shadow-2xl backdrop-blur-md transition-colors hover:border-primary-500"
+                aria-label="BGM volume controller"
+            >
+                {volume > 0 ? (
+                    <Volume2 size={18} className="text-primary-500" />
+                ) : (
+                    <VolumeX size={18} className="text-gray-400" />
+                )}
+            </button>
+
+            <div className="pointer-events-none absolute right-0 top-full pt-2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                <div className="flex h-36 w-14 items-center justify-center rounded-2xl border border-gray-700/70 bg-dark-900/72 shadow-2xl backdrop-blur-md">
+                    <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={Math.round(volume * 100)}
+                        onChange={(event) => setVolume(Number(event.target.value) / 100)}
+                        className="h-2 w-24 cursor-pointer appearance-none rounded-lg bg-gray-600/80 accent-primary-500 -rotate-90"
+                        aria-label="BGM volume"
+                    />
+                </div>
             </div>
-            <span className="w-10 text-right text-xs font-bold text-white">
-                {Math.round(volume * 100)}%
-            </span>
         </div>
     );
 }
