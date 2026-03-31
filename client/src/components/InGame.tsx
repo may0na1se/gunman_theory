@@ -237,8 +237,8 @@ export default function InGame() {
             id: buffName,
             name: buffName,
             desc: buffDesc,
-            x: rect.left + rect.width / 2,
-            y: rect.top - 10
+            x: rect.left - 12,
+            y: rect.top - 12
         });
     };
 
@@ -761,10 +761,10 @@ export default function InGame() {
                         style={{
                             left: `${hoveredBuffTooltip.x}px`,
                             top: `${hoveredBuffTooltip.y}px`,
-                            transform: 'translate(-50%, -100%)'
+                            transform: 'translate(-100%, -100%)'
                         }}
                     >
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-primary-500" />
+                        <div className="absolute -bottom-2 right-4 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-primary-500" />
                         <span className="text-primary-500 font-black text-sm">{hoveredBuffTooltip.name}</span>
                         <p className="text-gray-300 text-xs leading-relaxed break-keep">
                             {hoveredBuffTooltip.desc}
