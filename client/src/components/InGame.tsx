@@ -6,6 +6,7 @@ import targetPng from '../assets/target.png';
 import firedSfx from '../assets/fired.mp3';
 import failedSfx from '../assets/failed.mp3';
 import clangSfx from '../assets/clang.mp3';
+import revolverSpinSfx from '../assets/revolver_spin.mp3';
 import aceOfSpades from '../assets/ace-of-spades.jpg';
 
 export default function InGame() {
@@ -182,6 +183,12 @@ export default function InGame() {
         setIsShaking(true);
         setTimeout(() => setIsShaking(false), 400); // 0.4초 흔들림
         setTimeout(() => setFlashColor('transparent'), 150); // 번쩍이는 0.15초만
+    };
+
+    const playRevolverSpin = () => {
+        const audio = new Audio(revolverSpinSfx);
+        audio.volume = 0.6;
+        audio.play().catch(e => console.log('Audio play failed:', e));
     };
 
     if (!roomState) return null;
@@ -490,6 +497,9 @@ export default function InGame() {
                             </button>
                             <button
                                 onClick={() => {
+                                    if (!isShootingMode) {
+                                        playRevolverSpin();
+                                    }
                                     setIsShootingMode(!isShootingMode);
                                     setActiveCardMode(null);
                                 }}
