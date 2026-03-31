@@ -189,6 +189,13 @@ export default function InGame() {
     const currentTurnPlayer = roomState.players[roomState.turnIndex];
     const isMyTurn = currentTurnPlayer?.name === username;
 
+    useEffect(() => {
+        if (!isMyTurn) {
+            setIsShootingMode(false);
+            setActiveCardMode(null);
+        }
+    }, [isMyTurn]);
+
     const handleDrawCard = () => {
         if (!isMyTurn || !socket) return;
         setIsShootingMode(false);
