@@ -355,7 +355,7 @@ io.on('connection', (socket) => {
             const room = rooms.get(roomId);
             const player = room.players.find(p => p.id === socket.id);
             if (player && player.isHost && room.status === 'waiting') {
-                const notReadyPlayers = room.players.filter(p => !p.ready).map(p => p.name);
+                const notReadyPlayers = room.players.filter(p => !p.isHost && !p.ready).map(p => p.name);
                 if (notReadyPlayers.length > 0) {
                     io.to(roomId).emit('global_message', `⚠️ 아직 준비 안 된 플레이어: ${notReadyPlayers.join(', ')}`);
                     return;
@@ -431,7 +431,7 @@ io.on('connection', (socket) => {
 
             // 플레이어 상태 초기화
             room.players.forEach(p => {
-                p.ready = false;  // 준비 상태 해제
+                p.ready = true;
                 p.money = 200;
                 p.prob = 0;
                 p.isAlive = true;
