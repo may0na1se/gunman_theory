@@ -497,6 +497,17 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('shooting_mode_started', () => {
+        const roomId = socket.data.roomId;
+        if (roomId && rooms.has(roomId)) {
+            const room = rooms.get(roomId);
+            const currentPlayer = room.players[room.turnIndex];
+            if (currentPlayer?.id === socket.id) {
+                io.to(roomId).emit('shooting_mode_started');
+            }
+        }
+    });
+
     // (더이상 end_turn은 수동으로 호출하지 않음 - 사격이나 카드뽑기 후 자동 전환)
     // // 턴 넘기기 로직 (허공에 쏘기 등)
     // socket.on('end_turn', () => {

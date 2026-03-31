@@ -9,6 +9,10 @@ import clangSfx from '../assets/clang.mp3';
 import revolverSpinSfx from '../assets/revolver_spin.mp3';
 import aceOfSpades from '../assets/ace-of-spades.jpg';
 
+const revolverSpinAudio = new Audio(revolverSpinSfx);
+revolverSpinAudio.preload = 'auto';
+revolverSpinAudio.volume = 0.6;
+
 export default function InGame() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
@@ -88,14 +92,17 @@ export default function InGame() {
 
             // 키워드 기반 효과음 재생 (볼륨 50%)
             if (msg.includes('[도탄]')) {
+                stopRevolverSpin();
                 const audio = new Audio(clangSfx);
                 audio.volume = 0.5;
                 audio.play().catch(e => console.log('Audio play failed:', e));
             } else if (msg.includes('[적중]')) {
+                stopRevolverSpin();
                 const audio = new Audio(firedSfx);
                 audio.volume = 0.5;
                 audio.play().catch(e => console.log('Audio play failed:', e));
             } else if (msg.includes('[불발]')) {
+                stopRevolverSpin();
                 const audio = new Audio(failedSfx);
                 audio.volume = 0.5;
                 audio.play().catch(e => console.log('Audio play failed:', e));
@@ -103,6 +110,7 @@ export default function InGame() {
         };
 
         socket.on('global_message', handleGlobalMessage);
+        socket.on('shooting_mode_started', playRevolverSpin);
 
         // 게임 종료 및 최종 순위 정보 수신
         socket.on('game_over', ({ rankings }) => {
@@ -126,6 +134,7 @@ export default function InGame() {
 
         return () => {
             socket.off('global_message', handleGlobalMessage);
+            socket.off('shooting_mode_started', playRevolverSpin);
             socket.off('game_over');
             socket.off('used_card_broadcast');
         };
@@ -185,10 +194,14 @@ export default function InGame() {
         setTimeout(() => setFlashColor('transparent'), 150); // 번쩍이는 0.15초만
     };
 
+    const stopRevolverSpin = () => {
+        revolverSpinAudio.pause();
+        revolverSpinAudio.currentTime = 0;
+    };
+
     const playRevolverSpin = () => {
-        const audio = new Audio(revolverSpinSfx);
-        audio.volume = 0.6;
-        audio.play().catch(e => console.log('Audio play failed:', e));
+        stopRevolverSpin();
+        revolverSpinAudio.play().catch(e => console.log('Audio play failed:', e));
     };
 
     if (!roomState) return null;
@@ -498,7 +511,7 @@ export default function InGame() {
                             <button
                                 onClick={() => {
                                     if (!isShootingMode) {
-                                        playRevolverSpin();
+                                        socket?.emit('shooting_mode_started');
                                     }
                                     setIsShootingMode(!isShootingMode);
                                     setActiveCardMode(null);
