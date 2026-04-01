@@ -7,11 +7,16 @@ import firedSfx from '../assets/fired.mp3';
 import failedSfx from '../assets/failed.mp3';
 import clangSfx from '../assets/clang.mp3';
 import revolverSpinSfx from '../assets/revolver_spin.mp3';
+import cardDrawSfx from '../assets/card.mp3';
 import aceOfSpades from '../assets/ace-of-spades.jpg';
 
 const revolverSpinAudio = new Audio(revolverSpinSfx);
 revolverSpinAudio.preload = 'auto';
 revolverSpinAudio.volume = 0.6;
+
+const cardDrawAudio = new Audio(cardDrawSfx);
+cardDrawAudio.preload = 'auto';
+cardDrawAudio.volume = 0.7;
 
 export default function InGame() {
     const socket = useGameStore(state => state.socket);
@@ -110,6 +115,7 @@ export default function InGame() {
 
         socket.on('system_message', handleSystemMessage);
         socket.on('shooting_mode_started', playRevolverSpin);
+        socket.on('card_draw_started', playCardDraw);
 
         // 게임 종료 및 최종 순위 정보 수신
         socket.on('game_over', ({ rankings }) => {
@@ -134,6 +140,7 @@ export default function InGame() {
         return () => {
             socket.off('system_message', handleSystemMessage);
             socket.off('shooting_mode_started', playRevolverSpin);
+            socket.off('card_draw_started', playCardDraw);
             socket.off('game_over');
             socket.off('used_card_broadcast');
         };
@@ -201,6 +208,12 @@ export default function InGame() {
     const playRevolverSpin = () => {
         stopRevolverSpin();
         revolverSpinAudio.play().catch(e => console.log('Audio play failed:', e));
+    };
+
+    const playCardDraw = () => {
+        cardDrawAudio.pause();
+        cardDrawAudio.currentTime = 0;
+        cardDrawAudio.play().catch(e => console.log('Audio play failed:', e));
     };
 
     if (!roomState) return null;

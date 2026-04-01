@@ -685,6 +685,7 @@ io.on('connection', (socket) => {
                 const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
                 currentPlayer.activeCard = ALL_CARDS[Math.floor(Math.random() * ALL_CARDS.length)];
 
+                io.to(roomId).emit('card_draw_started');
                 emitSystemMessage(roomId, `🃏 ${currentPlayer.name}님이 새 카드를 뽑았습니다.`);
 
                 // 행동 종료 시점: 발악 버프가 있다면 턴 유지, 없다면 턴 종료+파산 지불 체크
