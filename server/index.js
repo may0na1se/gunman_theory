@@ -71,6 +71,10 @@ function emitRoomState(roomId, room) {
     io.to(roomId).emit('room_state_update', getSerializableRoom(room));
 }
 
+function emitSystemMessage(roomId, message) {
+    io.to(roomId).emit('system_message', message);
+}
+
 function broadcastRooms() {
     const roomList = Array.from(rooms.values()).map(r => ({
         id: r.id,
@@ -105,10 +109,10 @@ function startNextTurn(room) {
 
             winner.money += (room.pot + bonusAmount);
             room.winnerId = winner.id;
-            io.to(room.id).emit('global_message', `🏆 라운드 ${room.round} 종료! ${winner.name}님이 살아남아 판돈과 보너스 총액 $${room.pot + bonusAmount}를 휩쓸었습니다!`);
+            emitSystemMessage(room.id, `🏆 라운드 ${room.round} 종료! ${winner.name}님이 살아남아 판돈과 보너스 총액 $${room.pot + bonusAmount}를 휩쓸었습니다!`);
         } else {
             room.winnerId = null;
-            io.to(room.id).emit('global_message', `☠️ 라운드 종료! 모두 비참하게 죽어 판돈이 증발했습니다...`);
+            emitSystemMessage(room.id, `☠️ 라운드 종료! 모두 비참하게 죽어 판돈이 증발했습니다...`);
         }
 
         room.pot = 0;
@@ -127,7 +131,7 @@ function startNextTurn(room) {
                 return b.bankruptOrder - a.bankruptOrder;
             });
 
-            io.to(room.id).emit('global_message', `[최종 결과] 모든 라운드 종료! 진정한 총잡이가 가려졌습니다.`);
+            emitSystemMessage(room.id, `[최종 결과] 모든 라운드 종료! 진정한 총잡이가 가려졌습니다.`);
             emitRoomState(room.id, room);
             broadcastRooms();
             io.to(room.id).emit('game_over', { rankings: sortedPlayers });
@@ -147,7 +151,7 @@ function startNextTurn(room) {
                 if (room.phase === 'betting') {
                     const nextRound = room.round + 1;
                     const defaultBet = 5 + (nextRound * 5); // 2라운드=15, 3라=20, 4라=25
-                    io.to(room.id).emit('global_message', `⏳ 시간 초과! 라운드 ${nextRound}이(가) 기본 베팅액 $${defaultBet}로 자동 시작됩니다.`);
+                    emitSystemMessage(room.id, `⏳ 시간 초과! 라운드 ${nextRound}이(가) 기본 베팅액 $${defaultBet}로 자동 시작됩니다.`);
                     processNextRoundStart(room, defaultBet, io);
                 }
             }, 10000);
@@ -200,7 +204,7 @@ function startNextTurn(room) {
     if (currentPlayer.hasSponsor > 0) {
         const amount = 10 * currentPlayer.hasSponsor;
         currentPlayer.money += amount;
-        io.to(room.id).emit('global_message', `💰 [후원자 B] ${currentPlayer.name}님이 턴 시작 후원금 $${amount}를 받았습니다. (x${currentPlayer.hasSponsor})`);
+        emitSystemMessage(room.id, `💰 [후원자 B] ${currentPlayer.name}님이 턴 시작 후원금 $${amount}를 받았습니다. (x${currentPlayer.hasSponsor})`);
     }
 
     // (기존) 턴 시작 시 의무베팅 했으나, 변경된 룰에 따라 행동 후 턴 넘기기 직전에 베팅 지불함.
@@ -211,13 +215,13 @@ function startNextTurn(room) {
         if (room.status !== 'playing') return;
         const cp = room.players[room.turnIndex];
         if (cp) {
-            io.to(room.id).emit('global_message', `⏳ 시간 초과! ${cp.name}님이 강제로 카드를 뽑고 턴을 넘깁니다.`);
+            emitSystemMessage(room.id, `⏳ 시간 초과! ${cp.name}님이 강제로 카드를 뽑고 턴을 넘깁니다.`);
             const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
             cp.activeCard = ALL_CARDS[Math.floor(Math.random() * ALL_CARDS.length)];
             
             finishTurnAndPay(room, cp, io);
             if (!cp.isAlive && cp.hasInsurance === 0) {
-                io.to(room.id).emit('global_message', `💀 [파산] ${cp.name}님이 판돈 지불에 실패하여 파산했습니다!`);
+                emitSystemMessage(room.id, `💀 [파산] ${cp.name}님이 판돈 지불에 실패하여 파산했습니다!`);
             }
             startNextTurn(room);
             emitRoomState(room.id, room);
@@ -238,7 +242,7 @@ function handlePlayerDeath(currentPlayer, room, io) {
     if (currentPlayer.hasInsurance > 0) {
         const amount = 80 * currentPlayer.hasInsurance;
         currentPlayer.money += amount;
-        io.to(room.id).emit('global_message', `🏥 [보험 발동] ${currentPlayer.name}님이 사망하여 생명보험금 $${amount}를 수령했습니다! (x${currentPlayer.hasInsurance})`);
+        emitSystemMessage(room.id, `🏥 [보험 발동] ${currentPlayer.name}님이 사망하여 생명보험금 $${amount}를 수령했습니다! (x${currentPlayer.hasInsurance})`);
         currentPlayer.hasInsurance = 0;
     } else {
         // 죽어도 잔고는 유지됨 (단, 생존자에게 스틸당한 금액 등은 다른 곳에서 이미 계산됨)
@@ -277,7 +281,7 @@ function processNextRoundStart(room, betAmount, io) {
             p.isAlive = false;
             room.bankruptCount += 1;
             p.bankruptOrder = room.bankruptCount;
-            io.to(room.id).emit('global_message', `📉 ${p.name}님이 베팅금액($${room.currentBet})을 내지 못해 파산했습니다!`);
+            emitSystemMessage(room.id, `📉 ${p.name}님이 베팅금액($${room.currentBet})을 내지 못해 파산했습니다!`);
         } else {
             // 새 라운드 시작 복구
             p.isAlive = true;
@@ -303,7 +307,7 @@ function processNextRoundStart(room, betAmount, io) {
     room.turnIndex = winnerIndex !== -1 ? winnerIndex : -1;
     startNextTurn(room);
 
-    io.to(room.id).emit('global_message', `📣 라운드 ${room.round} 시작! 기준 베팅금: $${room.currentBet}`);
+    emitSystemMessage(room.id, `📣 라운드 ${room.round} 시작! 기준 베팅금: $${room.currentBet}`);
     emitRoomState(room.id, room);
 }
 
@@ -376,7 +380,7 @@ io.on('connection', (socket) => {
         } else if (shouldJoinAsSpectator) {
             room.spectators.push(createSpectator(socket.id, normalizedUsername));
             socket.data.isSpectator = true;
-            io.to(normalizedRoomId).emit('global_message', `👀 ${normalizedUsername}님이 관전하러 들어왔습니다.`);
+            emitSystemMessage(normalizedRoomId, `👀 ${normalizedUsername}님이 관전하러 들어왔습니다.`);
         } else {
             room.players.push(createPlayer(socket.id, normalizedUsername, room.players.length === 0));
             socket.data.isSpectator = false;
@@ -421,7 +425,7 @@ io.on('connection', (socket) => {
             if (player && player.isHost && room.status === 'waiting') {
                 const notReadyPlayers = room.players.filter(p => !p.isHost && !p.ready).map(p => p.name);
                 if (notReadyPlayers.length > 0) {
-                    io.to(roomId).emit('global_message', `⚠️ 아직 준비 안 된 플레이어: ${notReadyPlayers.join(', ')}`);
+                    emitSystemMessage(roomId, `⚠️ 아직 준비 안 된 플레이어: ${notReadyPlayers.join(', ')}`);
                     return;
                 }
 
@@ -527,7 +531,7 @@ io.on('connection', (socket) => {
             });
 
             console.log(`[다시하기] [${roomId}] 방 데이터가 초기화되었습니다.`);
-            io.to(roomId).emit('global_message', '🔄 게임이 초기화되었습니다. 모두 대기실로 돌아갑니다.');
+            emitSystemMessage(roomId, '🔄 게임이 초기화되었습니다. 모두 대기실로 돌아갑니다.');
             emitRoomState(roomId, room);
             broadcastRooms();
         }
@@ -617,7 +621,7 @@ io.on('connection', (socket) => {
                     if (currentPlayer.hasCurse) {
                         targetPlayer.prob = Math.max(10, targetPlayer.prob - 30);
                         currentPlayer.hasCurse = false;
-                        io.to(roomId).emit('global_message', `☠️ [저주] ${currentPlayer.name}님의 저주받은 총알이 닿아 ${targetPlayer.name}님의 확률이 30% 폭락했습니다!`);
+                        emitSystemMessage(roomId, `☠️ [저주] ${currentPlayer.name}님의 저주받은 총알이 닿아 ${targetPlayer.name}님의 확률이 30% 폭락했습니다!`);
                     }
 
                     const isHit = Math.random() * 100 < currentPlayer.prob;
@@ -627,7 +631,7 @@ io.on('connection', (socket) => {
                             // 방탄복 적용 (1회 방어 후 소멸)
                             targetPlayer.hasVest = false;
                             console.log(`[방탄복 발동] ${targetPlayer.name} 님이 총격 생존.`);
-                            io.to(roomId).emit('global_message', `🛡️ [도탄] ${targetPlayer.name}님의 방탄복이 1회 희생되어 총격을 막았습니다!`);
+                            emitSystemMessage(roomId, `🛡️ [도탄] ${targetPlayer.name}님의 방탄복이 1회 희생되어 총격을 막았습니다!`);
                         } else {
                             handlePlayerDeath(targetPlayer, room, io);
                             // 강도 버프(4배) 확인 후 스틸 금액 계산 (죽은 사람의 보험금이 있을 수 있으므로 처리 후 계산)
@@ -639,21 +643,21 @@ io.on('connection', (socket) => {
                             currentPlayer.money += stealAmount;
 
                             console.log(`[사격 적중] ${currentPlayer.name} 님이 ${targetPlayer.name} 님 처치. $${stealAmount} 스틸.`);
-                            io.to(roomId).emit('global_message', `🎯 [적중] ${currentPlayer.name}님이 ${targetPlayer.name}님을 사살하고 $${stealAmount}를 빼앗았습니다!`);
+                            emitSystemMessage(roomId, `🎯 [적중] ${currentPlayer.name}님이 ${targetPlayer.name}님을 사살하고 $${stealAmount}를 빼앗았습니다!`);
                         }
                     } else {
                         console.log(`[사격 불발] ${currentPlayer.name} 님이 ${targetPlayer.name} 님에게 빗나감.`);
-                        io.to(roomId).emit('global_message', `💨 [불발] ${currentPlayer.name}님의 사격이 빗나갔습니다!`);
+                        emitSystemMessage(roomId, `💨 [불발] ${currentPlayer.name}님의 사격이 빗나갔습니다!`);
                     }
 
                     // 행동 종료 시점: 발악 버프가 있다면 턴 유지, 없다면 턴 종료+파산 지불 체크
                     if (currentPlayer.hasExtraTurn) {
                         currentPlayer.hasExtraTurn = false;
-                        io.to(roomId).emit('global_message', `🩸 [발악] ${currentPlayer.name}님이 추가 행동권을 소모했습니다. (턴 유지)`);
+                        emitSystemMessage(roomId, `🩸 [발악] ${currentPlayer.name}님이 추가 행동권을 소모했습니다. (턴 유지)`);
                     } else {
                         finishTurnAndPay(room, currentPlayer, io);
                         if (!currentPlayer.isAlive && currentPlayer.hasInsurance === 0) {
-                            io.to(roomId).emit('global_message', `💀 [파산] ${currentPlayer.name}님이 판돈 지불에 실패하여 파산했습니다!`);
+                            emitSystemMessage(roomId, `💀 [파산] ${currentPlayer.name}님이 판돈 지불에 실패하여 파산했습니다!`);
                         }
                         startNextTurn(room);
                     }
@@ -676,16 +680,16 @@ io.on('connection', (socket) => {
                 const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
                 currentPlayer.activeCard = ALL_CARDS[Math.floor(Math.random() * ALL_CARDS.length)];
 
-                io.to(roomId).emit('global_message', `🃏 ${currentPlayer.name}님이 새 카드를 뽑았습니다.`);
+                emitSystemMessage(roomId, `🃏 ${currentPlayer.name}님이 새 카드를 뽑았습니다.`);
 
                 // 행동 종료 시점: 발악 버프가 있다면 턴 유지, 없다면 턴 종료+파산 지불 체크
                 if (currentPlayer.hasExtraTurn) {
                     currentPlayer.hasExtraTurn = false;
-                    io.to(roomId).emit('global_message', `🩸 [발악] ${currentPlayer.name}님이 추가 행동권을 소모했습니다. (턴 유지)`);
+                    emitSystemMessage(roomId, `🩸 [발악] ${currentPlayer.name}님이 추가 행동권을 소모했습니다. (턴 유지)`);
                 } else {
                     finishTurnAndPay(room, currentPlayer, io);
                     if (!currentPlayer.isAlive && currentPlayer.hasInsurance === 0) {
-                        io.to(roomId).emit('global_message', `💀 [파산] ${currentPlayer.name}님이 판돈 지불에 실패하여 파산했습니다!`);
+                        emitSystemMessage(roomId, `💀 [파산] ${currentPlayer.name}님이 판돈 지불에 실패하여 파산했습니다!`);
                     }
                     startNextTurn(room);
                 }
@@ -768,7 +772,7 @@ io.on('connection', (socket) => {
                 break;
         }
 
-        io.to(roomId).emit('global_message', actionMsg);
+        emitSystemMessage(roomId, actionMsg);
         io.to(roomId).emit('used_card_broadcast', { playerName: currentPlayer.name, cardName });
 
         // (발악의 확률 -25% 로직 수정: 이전엔 턴을 스킵하지 않는 변수로 썼으나, 이젠 모든 카드가 턴을 스킵하지 않음)
@@ -778,7 +782,7 @@ io.on('connection', (socket) => {
             // 이미 코스트는 위에서 냈음. 파산 연산 등은 finishTurnAndPay가 아니어도 사망 시 다음 턴으로.
             if (currentPlayer.hasInsurance === 0 && currentPlayer.money <= 0 && cardName !== '도주') {
                 // 보험이 없고 돈이 0이하여서 죽었다면 코스트 지불 파산
-                io.to(roomId).emit('global_message', `💀 [파산] ${currentPlayer.name}님이 카드 비용 지불 후 파산했습니다!`);
+                emitSystemMessage(roomId, `💀 [파산] ${currentPlayer.name}님이 카드 비용 지불 후 파산했습니다!`);
             }
             startNextTurn(room);
         }
@@ -794,7 +798,11 @@ io.on('connection', (socket) => {
         if (roomId && rooms.has(roomId)) {
             const sanitizedMessage = String(message ?? '').trim().slice(0, 20);
             if (!sanitizedMessage) return;
-            io.to(roomId).emit('global_message', `💬 [${socket.data.username}] ${sanitizedMessage}`);
+            io.to(roomId).emit('chat_message', {
+                sender: socket.data.username,
+                message: sanitizedMessage,
+                senderId: socket.id
+            });
         }
     });
 
@@ -836,12 +844,12 @@ io.on('connection', (socket) => {
                     if (room.phase === 'betting' && room.winnerId === socket.id) {
                         const host = newHost || room.players.find(p => p.isHost);
                         room.winnerId = host ? host.id : null;
-                        io.to(roomId).emit('global_message', `🔄 승리자가 퇴장하여 베팅 권한이 방장에게 넘어갔습니다.`);
+                        emitSystemMessage(roomId, `🔄 승리자가 퇴장하여 베팅 권한이 방장에게 넘어갔습니다.`);
                     }
 
                     if (room.status === 'playing') {
                         if (isTurnPlayer) {
-                            io.to(roomId).emit('global_message', `🏃 턴 진행자가 퇴장하여 턴이 강제로 넘어갑니다.`);
+                            emitSystemMessage(roomId, `🏃 턴 진행자가 퇴장하여 턴이 강제로 넘어갑니다.`);
                             if (room.turnDirection === 1) {
                                 room.turnIndex -= 1;
                             }

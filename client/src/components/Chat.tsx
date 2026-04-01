@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 
+interface ChatMessage {
+    sender: string;
+    message: string;
+    senderId: string;
+}
+
 export default function Chat() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
 
-    const [messages, setMessages] = useState<string[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -14,18 +20,18 @@ export default function Chat() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // 글로벌 메시지 수신 (InGame.tsx의 효과음/화면흔들기 로직은 InGame에 유지, 여기선 채팅만 쌓음)
+    // 유저 채팅 수신
     useEffect(() => {
         if (!socket) return;
 
-        const handleGlobalMessage = (msg: string) => {
-            setMessages(prev => [...prev, msg]);
+        const handleChatMessage = (chatMessage: ChatMessage) => {
+            setMessages(prev => [...prev, chatMessage]);
         };
 
-        socket.on('global_message', handleGlobalMessage);
+        socket.on('chat_message', handleChatMessage);
 
         return () => {
-            socket.off('global_message', handleGlobalMessage);
+            socket.off('chat_message', handleChatMessage);
         };
     }, [socket]);
 
@@ -43,14 +49,18 @@ export default function Chat() {
         <div
             className="fixed top-1/2 -translate-y-1/2 left-4 z-[500] flex flex-col w-80 h-96 max-h-[60vh] bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto"
         >
+            <div className="px-3 py-2 border-b border-gray-700/50 text-sm font-bold text-primary-500">
+                채팅
+            </div>
             {/* 메세지 스크롤 구역 */}
             <div
                 className="flex-1 overflow-y-auto p-3 flex flex-col gap-2"
                 style={{ scrollbarWidth: 'thin', scrollbarColor: '#4B5563 transparent' }}
             >
                 {messages.map((msg, idx) => (
-                    <div key={idx} className="bg-dark-800/90 text-gray-200 px-3 py-2 rounded shadow-sm border-l-4 border-primary-500 text-xs w-full break-keep animate-fade-in-up">
-                        {msg}
+                    <div key={`${msg.senderId}-${idx}`} className="bg-dark-800/90 text-gray-200 px-3 py-2 rounded shadow-sm border-l-4 border-primary-500 text-xs w-full break-keep animate-fade-in-up">
+                        <span className="font-bold text-primary-400 mr-2">[{msg.sender}]</span>
+                        <span>{msg.message}</span>
                     </div>
                 ))}
                 <div ref={messagesEndRef} />

@@ -81,7 +81,7 @@ export default function InGame() {
         if (!socket) return;
 
         // 글로벌 메시지(사격 적중/파산 등)가 올 때 화면 흔들기 감지 및 사운드 재생
-        const handleGlobalMessage = (msg: string) => {
+        const handleSystemMessage = (msg: string) => {
             // 키워드 기반 화면 진동 및 섬광
             if (msg.includes('적중') || msg.includes('사살')) {
                 triggerShake('red');
@@ -108,7 +108,7 @@ export default function InGame() {
             }
         };
 
-        socket.on('global_message', handleGlobalMessage);
+        socket.on('system_message', handleSystemMessage);
         socket.on('shooting_mode_started', playRevolverSpin);
 
         // 게임 종료 및 최종 순위 정보 수신
@@ -132,7 +132,7 @@ export default function InGame() {
         });
 
         return () => {
-            socket.off('global_message', handleGlobalMessage);
+            socket.off('system_message', handleSystemMessage);
             socket.off('shooting_mode_started', playRevolverSpin);
             socket.off('game_over');
             socket.off('used_card_broadcast');
@@ -503,7 +503,7 @@ export default function InGame() {
                 {mySpectator ? (
                     <div className="fixed bottom-8 z-30 flex flex-col items-center gap-2 bg-dark-800 p-4 rounded-2xl border-2 border-sky-500/60 shadow-2xl pointer-events-auto">
                         <p className="text-sky-300 font-bold text-lg">관전 중입니다.</p>
-                        <p className="text-gray-400 text-sm">이 게임이 끝나고 다시하기가 눌리면 자동으로 플레이어가 됩니다.</p>
+                        <p className="text-gray-400 text-sm">모든 라운드가 끝나고 다음 게임이 시작되면 자동으로 플레이어가 됩니다.</p>
                         <p className="text-yellow-500 font-bold text-sm tracking-widest">
                             {currentTurnPlayer ? `${currentTurnPlayer.name}의 턴 (${turnTimerDisplay ?? 20}초 남음)` : '진행 상황 대기 중'}
                         </p>
@@ -562,7 +562,7 @@ export default function InGame() {
                                     <div className="text-center w-full mb-2">
                                         <span className="text-gray-400 text-xs font-bold block mb-1">격발 확률 (클릭해서 조정)</span>
                                         <div className="bg-dark-800 text-white font-black py-1 px-3 rounded-md border border-gray-600 text-sm flex items-center justify-center gap-1 shadow-inner">
-                                            현재: {me.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : me.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
+                                            현재: {me.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : me.passive === '유지' ? <span className="text-gray-400">　유지</span> : <span className="text-blue-400">▼ 감소</span>}
                                         </div>
                                     </div>
                                     <div className="flex gap-1 w-full mt-auto">

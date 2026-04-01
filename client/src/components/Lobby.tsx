@@ -139,7 +139,7 @@ export default function Lobby() {
                             type="submit"
                             className="mt-4 w-full bg-primary-500 hover:bg-yellow-400 text-dark-900 font-bold py-3 px-4 rounded-lg transition-colors duration-200"
                         >
-                            게임 방 입장하기
+                            게임 방 만들기
                         </button>
                     </form>
                 )}

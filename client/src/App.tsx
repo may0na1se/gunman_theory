@@ -5,12 +5,10 @@ import Lobby from './components/Lobby';
 import Room from './components/Room';
 import InGame from './components/InGame';
 import Chat from './components/Chat';
+import SystemLog from './components/SystemLog';
 import BgmController from './components/BgmController';
 
-// 환경 변수나 로컬 스토리지 등에 따라 URL 분기 가능
-// 우선 로컬 개발환경 서버 주소 적용 (외부 접속 테스트를 위해 IP로 변경)
-// const SOCKET_URL = 'http://70.12.247.186:4000';
-const SOCKET_URL = 'https://gunman-theory.onrender.com'
+const SOCKET_URL = 'https://gunman-theory.onrender.com';
 
 function App() {
   const { setSocket, setIsConnected, roomState, setRoomState, setRoomList } = useGameStore();
@@ -62,8 +60,9 @@ function App() {
       ) : (
         <>
           {roomState.status === 'playing' || roomState.status === 'finished' ? <InGame /> : <Room />}
-          {/* 어느 방이든(대기실이나 게임 플레이, 결과창) 우측 하단이나 고정된 위치에 공용 채팅창 렌더링 */}
+          {/* 어느 방이든(대기실이나 게임 플레이, 결과창) 좌측 채팅 / 우측 시스템 로그 렌더링 */}
           <Chat />
+          <SystemLog />
         </>
       )}
     </>
