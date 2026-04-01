@@ -58,6 +58,11 @@ function getFinalRankings(room) {
     });
 }
 
+function getInitialProb(room) {
+    const maxInitialProb = room.players.length >= 6 ? 60 : 45;
+    return Math.floor(Math.random() * (maxInitialProb - 10 + 1)) + 10;
+}
+
 function getSerializableRoom(room) {
     const { turnTimeout, bettingTimeout, ...safeRoom } = room;
     return {
@@ -285,7 +290,7 @@ function processNextRoundStart(room, betAmount, io) {
         } else {
             // 새 라운드 시작 복구
             p.isAlive = true;
-            p.prob = Math.floor(Math.random() * (45 - 10 + 1)) + 10;
+            p.prob = getInitialProb(room);
             p.passive = '유지';
 
             const ALL_CARDS = ['강도', '방탄복', '도주', '역주행', '후원자 A', '후원자 B', '명상', '탄약병', '저주', '보험', '파괴', '발악'];
@@ -444,7 +449,7 @@ io.on('connection', (socket) => {
 
                 room.players.forEach(p => {
                     p.money = 200; // 초기 자본 세팅
-                    p.prob = Math.floor(Math.random() * (45 - 10 + 1)) + 10; // 10~45% 초기 할당
+                    p.prob = getInitialProb(room); // 6인 이상은 10~60%, 아니면 10~45%
                     p.isAlive = true;
                     p.isBankrupt = false;
                     p.bankruptOrder = 0;
