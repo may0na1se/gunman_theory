@@ -827,15 +827,13 @@ export default function InGame() {
                     ${((activeCardMode && player.id !== socket?.id) || (isShootingMode && player.id !== socket?.id)) && player.isAlive ? 'cursor-pointer hover:ring-2 hover:ring-red-500' : ''}
 `}
             >
-                {/* 왼쪽 마커: 패시브 확률 조작기 (나인 경우 좌측하단에서 관리하지만, 직관주의 심리전을 위해 다른사람꺼는 보이게) */}
-                {!isMe && (
-                    <div
-                        className="absolute -left-3 top-4 bg-dark-900 rounded-md py-1 px-2 border border-gray-700 text-[10px] text-gray-300 font-bold shadow-md cursor-help"
-                        title="이 플레이어의 현재 패시브 상태"
-                    >
-                        {player.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : player.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
-                    </div>
-                )}
+                {/* 왼쪽 마커: 현재 패시브 상태 */}
+                <div
+                    className="absolute -left-3 top-4 bg-dark-900 rounded-md py-1 px-2 border border-gray-700 text-[10px] text-gray-300 font-bold shadow-md cursor-help"
+                    title="이 플레이어의 현재 패시브 상태"
+                >
+                    {player.passive === '증가' ? <span className="text-red-400">▲ 증가</span> : player.passive === '유지' ? <span className="text-gray-400">- 유지</span> : <span className="text-blue-400">▼ 감소</span>}
+                </div>
 
                 {/* 프로필 이미지 (임시 문자) */}
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold mb-2 shadow-inner
