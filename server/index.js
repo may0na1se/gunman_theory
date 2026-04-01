@@ -15,17 +15,71 @@ const io = new Server(httpServer, {
 });
 
 const rooms = new Map();
+const MAX_ROOM_MEMBERS = 8;
+
+function createPlayer(id, name, isHost = false) {
+    return {
+        id,
+        name,
+        isHost,
+        ready: true,
+        money: 200,
+        prob: 0,
+        isAlive: true,
+        passive: '유지',
+        activeCard: null,
+        hasVest: false,
+        hasRobber: false,
+        hasSponsor: 0,
+        isMeditation: false,
+        hasInsurance: 0,
+        hasExtraTurn: false,
+        hasCurse: false,
+        maxProb: 66,
+        isBankrupt: false,
+        bankruptOrder: 0
+    };
+}
+
+function createSpectator(id, name) {
+    return { id, name };
+}
+
+function getOccupiedCount(room) {
+    return room.players.length + room.spectators.length;
+}
+
+function getFinalRankings(room) {
+    return [...room.players].sort((a, b) => {
+        if (!a.isBankrupt && !b.isBankrupt) return b.money - a.money;
+        if (!a.isBankrupt) return -1;
+        if (!b.isBankrupt) return 1;
+        return b.bankruptOrder - a.bankruptOrder;
+    });
+}
 
 function getSerializableRoom(room) {
     const { turnTimeout, bettingTimeout, ...safeRoom } = room;
     return {
         ...safeRoom,
-        players: room.players.map(player => ({ ...player }))
+        players: room.players.map(player => ({ ...player })),
+        spectators: room.spectators.map(spectator => ({ ...spectator }))
     };
 }
 
 function emitRoomState(roomId, room) {
     io.to(roomId).emit('room_state_update', getSerializableRoom(room));
+}
+
+function broadcastRooms() {
+    const roomList = Array.from(rooms.values()).map(r => ({
+        id: r.id,
+        status: r.status,
+        playersCount: getOccupiedCount(r),
+        maxPlayers: MAX_ROOM_MEMBERS,
+        round: r.round
+    }));
+    io.emit('room_list_update', roomList);
 }
 
 // 턴 타이머 초기화 유틸
@@ -75,6 +129,7 @@ function startNextTurn(room) {
 
             io.to(room.id).emit('global_message', `[최종 결과] 모든 라운드 종료! 진정한 총잡이가 가려졌습니다.`);
             emitRoomState(room.id, room);
+            broadcastRooms();
             io.to(room.id).emit('game_over', { rankings: sortedPlayers });
             return;
         } else {
@@ -255,18 +310,6 @@ function processNextRoundStart(room, betAmount, io) {
 io.on('connection', (socket) => {
     console.log(`[+] 클라이언트 연결됨: ${socket.id}`);
 
-    // 현재 열려있는 방 목록을 전달하는 함수 (대기실 전용 정보 포맷팅)
-    const broadcastRooms = () => {
-        const roomList = Array.from(rooms.values()).map(r => ({
-            id: r.id,
-            status: r.status,
-            playersCount: r.players.length,
-            maxPlayers: 8,
-            round: r.round
-        }));
-        io.emit('room_list_update', roomList); // 접속한 모든 유저에게 전송
-    };
-
     // 접속 직후 클라이언트에게 현재 방 목록 전송
     broadcastRooms();
 
@@ -289,14 +332,12 @@ io.on('connection', (socket) => {
         const existingPlayerIndex = existingRoom
             ? existingRoom.players.findIndex(p => p.id === socket.id)
             : -1;
+        const existingSpectatorIndex = existingRoom
+            ? existingRoom.spectators.findIndex(s => s.id === socket.id)
+            : -1;
 
-        if (existingRoom && existingPlayerIndex === -1) {
-            if (existingRoom.status !== 'waiting') {
-                socket.emit('join_room_error', '이미 게임이 진행 중이거나 종료된 방입니다.');
-                return;
-            }
-
-            if (existingRoom.players.length >= 8) {
+        if (existingRoom && existingPlayerIndex === -1 && existingSpectatorIndex === -1) {
+            if (getOccupiedCount(existingRoom) >= MAX_ROOM_MEMBERS) {
                 socket.emit('join_room_error', '방이 꽉 찼습니다.');
                 return;
             }
@@ -308,6 +349,7 @@ io.on('connection', (socket) => {
             rooms.set(normalizedRoomId, {
                 id: normalizedRoomId,
                 players: [],
+                spectators: [],
                 status: 'waiting', // waiting, playing, finished
                 phase: 'playing', // playing, betting (베팅 금액 선정)
                 round: 1,
@@ -321,34 +363,23 @@ io.on('connection', (socket) => {
         }
 
         const room = rooms.get(normalizedRoomId);
+        const shouldJoinAsSpectator = room.status !== 'waiting';
 
         // 이미 있는 유저면 이름 변경, 아니면 새로 추가
         if (existingPlayerIndex >= 0) {
             room.players[existingPlayerIndex].name = normalizedUsername;
             room.players[existingPlayerIndex].ready = true;
+            socket.data.isSpectator = false;
+        } else if (existingSpectatorIndex >= 0) {
+            room.spectators[existingSpectatorIndex].name = normalizedUsername;
+            socket.data.isSpectator = true;
+        } else if (shouldJoinAsSpectator) {
+            room.spectators.push(createSpectator(socket.id, normalizedUsername));
+            socket.data.isSpectator = true;
+            io.to(normalizedRoomId).emit('global_message', `👀 ${normalizedUsername}님이 관전하러 들어왔습니다.`);
         } else {
-            room.players.push({
-                id: socket.id,
-                name: normalizedUsername,
-                isHost: room.players.length === 0,
-                ready: true,
-                money: 200,
-                prob: 0,
-                isAlive: true,
-                passive: '유지',
-                activeCard: null,
-                // 버프 및 상태 변수
-                hasVest: false,
-                hasRobber: false,
-                hasSponsor: 0,
-                isMeditation: false,
-                hasInsurance: 0, // 보험 가입 여부 (중첩 횟수)
-                hasExtraTurn: false, // 발악 (추가 행동권) 여부
-                hasCurse: false, // 다음 사격 시 저주 묻히기 버프
-                maxProb: 66, // 최대 확률 상한
-                isBankrupt: false, // 완전 파산 여부
-                bankruptOrder: 0 // 먼저 파산한 순서 기록용 (0이면 파산 안함)
-            });
+            room.players.push(createPlayer(socket.id, normalizedUsername, room.players.length === 0));
+            socket.data.isSpectator = false;
         }
 
         // 소켓 객체에 현재 방 정보 저장 (disconnect 시 활용)
@@ -362,6 +393,10 @@ io.on('connection', (socket) => {
 
         // 방 참가 또는 방 신규 생성으로 인원수/상태가 변했으므로 로비 유저들에게도 목록 업데이트
         broadcastRooms();
+
+        if (room.status === 'finished') {
+            socket.emit('game_over', { rankings: getFinalRankings(room) });
+        }
     });
 
     // 준비 완료 토글 로직
@@ -431,6 +466,7 @@ io.on('connection', (socket) => {
 
                 console.log(`[게임 시작] [${roomId}] 게임이 시작되었습니다.`);
                 emitRoomState(roomId, room);
+                broadcastRooms();
             }
         }
     });
@@ -458,6 +494,18 @@ io.on('connection', (socket) => {
             room.winnerId = null;
             room.bankruptCount = 0;
 
+            if (room.spectators.length > 0) {
+                const spectatorsToPromote = [...room.spectators];
+                spectatorsToPromote.forEach((spectator) => {
+                    room.players.push(createPlayer(spectator.id, spectator.name, false));
+                    const spectatorSocket = io.sockets.sockets.get(spectator.id);
+                    if (spectatorSocket) {
+                        spectatorSocket.data.isSpectator = false;
+                    }
+                });
+                room.spectators = [];
+            }
+
             // 플레이어 상태 초기화
             room.players.forEach(p => {
                 p.ready = true;
@@ -481,6 +529,7 @@ io.on('connection', (socket) => {
             console.log(`[다시하기] [${roomId}] 방 데이터가 초기화되었습니다.`);
             io.to(roomId).emit('global_message', '🔄 게임이 초기화되었습니다. 모두 대기실로 돌아갑니다.');
             emitRoomState(roomId, room);
+            broadcastRooms();
         }
     });
 
@@ -756,42 +805,51 @@ io.on('connection', (socket) => {
         if (roomId && rooms.has(roomId)) {
             const room = rooms.get(roomId);
             const disconnectedPlayerIndex = room.players.findIndex(p => p.id === socket.id);
-            const isTurnPlayer = room.status === 'playing' && disconnectedPlayerIndex === room.turnIndex;
+            const disconnectedSpectatorIndex = room.spectators.findIndex(s => s.id === socket.id);
+            const isSpectator = disconnectedSpectatorIndex !== -1;
+            const isTurnPlayer = !isSpectator && room.status === 'playing' && disconnectedPlayerIndex === room.turnIndex;
 
-            room.players = room.players.filter(p => p.id !== socket.id);
+            if (isSpectator) {
+                room.spectators = room.spectators.filter(s => s.id !== socket.id);
+            } else {
+                room.players = room.players.filter(p => p.id !== socket.id);
+            }
 
             if (room.players.length === 0) {
-                // 방에 아무도 없으면 폭파
                 clearTurnTimeout(room);
                 if (room.bettingTimeout) clearTimeout(room.bettingTimeout);
+                io.to(roomId).emit('room_closed');
+                io.in(roomId).socketsLeave(roomId);
                 rooms.delete(roomId);
-                console.log(`[삭제] [${roomId}] 빈 방 삭제`);
+                console.log(`[삭제] [${roomId}] 플레이어가 없어 방 삭제`);
             } else {
-                // 남은 유저가 있고, 나간 유저가 방장(Host)이었다면 호스트 넘겨주기
-                const hasHost = room.players.some(p => p.isHost);
-                let newHost = null;
-                if (!hasHost) {
-                    room.players[0].isHost = true;
-                    newHost = room.players[0];
-                }
+                if (!isSpectator) {
+                    // 남은 유저가 있고, 나간 유저가 방장(Host)이었다면 호스트 넘겨주기
+                    const hasHost = room.players.some(p => p.isHost);
+                    let newHost = null;
+                    if (!hasHost) {
+                        room.players[0].isHost = true;
+                        newHost = room.players[0];
+                    }
 
-                // 나간 유저가 우승자(베팅 권한자)였고 베팅 페이즈라면 권한 이양
-                if (room.phase === 'betting' && room.winnerId === socket.id) {
-                    const host = newHost || room.players.find(p => p.isHost);
-                    room.winnerId = host ? host.id : null;
-                    io.to(roomId).emit('global_message', `🔄 승리자가 퇴장하여 베팅 권한이 방장에게 넘어갔습니다.`);
-                }
+                    // 나간 유저가 우승자(베팅 권한자)였고 베팅 페이즈라면 권한 이양
+                    if (room.phase === 'betting' && room.winnerId === socket.id) {
+                        const host = newHost || room.players.find(p => p.isHost);
+                        room.winnerId = host ? host.id : null;
+                        io.to(roomId).emit('global_message', `🔄 승리자가 퇴장하여 베팅 권한이 방장에게 넘어갔습니다.`);
+                    }
 
-                if (room.status === 'playing') {
-                    if (isTurnPlayer) {
-                        io.to(roomId).emit('global_message', `🏃 턴 진행자가 퇴장하여 턴이 강제로 넘어갑니다.`);
-                        if (room.turnDirection === 1) {
+                    if (room.status === 'playing') {
+                        if (isTurnPlayer) {
+                            io.to(roomId).emit('global_message', `🏃 턴 진행자가 퇴장하여 턴이 강제로 넘어갑니다.`);
+                            if (room.turnDirection === 1) {
+                                room.turnIndex -= 1;
+                            }
+                            if (room.turnIndex < 0) room.turnIndex = Math.max(0, room.players.length - 1);
+                            startNextTurn(room);
+                        } else if (disconnectedPlayerIndex > -1 && disconnectedPlayerIndex < room.turnIndex) {
                             room.turnIndex -= 1;
                         }
-                        if (room.turnIndex < 0) room.turnIndex = Math.max(0, room.players.length - 1);
-                        startNextTurn(room);
-                    } else if (disconnectedPlayerIndex > -1 && disconnectedPlayerIndex < room.turnIndex) {
-                        room.turnIndex -= 1;
                     }
                 }
 

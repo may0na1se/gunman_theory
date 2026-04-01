@@ -2,12 +2,14 @@ import { useGameStore } from '../store/useGameStore';
 import { Users, Crown, Check } from 'lucide-react';
 
 export default function Room() {
-    const { roomState, username, socket, setRoomState } = useGameStore();
+    const { roomState, socket, setRoomState } = useGameStore();
 
     if (!roomState) return null;
 
-    const myPlayer = roomState.players.find(p => p.name === username);
+    const myPlayer = roomState.players.find(p => p.id === socket?.id);
+    const mySpectator = roomState.spectators.find(s => s.id === socket?.id);
     const isHost = myPlayer?.isHost;
+    const occupiedCount = roomState.players.length + roomState.spectators.length;
 
     const handleLeaveRoom = () => {
         if (socket) {
@@ -45,7 +47,7 @@ export default function Room() {
 
                 <div className="flex items-center gap-2 bg-dark-900 px-4 py-2 rounded-lg text-primary-500 font-bold">
                     <Users size={20} />
-                    <span>{roomState.players.length} / 8</span>
+                    <span>{occupiedCount} / 8</span>
                 </div>
             </div>
 
@@ -56,7 +58,7 @@ export default function Room() {
                         key={index}
                         className={`
               relative flex flex-col items-center justify-center p-6 rounded-2xl h-40 transition-all border-2
-              ${player ? (player.name === username ? 'bg-dark-800 border-primary-500' : 'bg-dark-800 border-gray-700') : 'bg-dark-900 border-dashed border-gray-800'}
+              ${player ? (player.id === socket?.id ? 'bg-dark-800 border-primary-500' : 'bg-dark-800 border-gray-700') : 'bg-dark-900 border-dashed border-gray-800'}
             `}
                     >
                         {player ? (
@@ -67,12 +69,12 @@ export default function Room() {
                                     </div>
                                 )}
 
-                                <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold mb-3 ${player.name === username ? 'bg-primary-500 text-dark-900' : 'bg-gray-700 text-white'}`}>
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold mb-3 ${player.id === socket?.id ? 'bg-primary-500 text-dark-900' : 'bg-gray-700 text-white'}`}>
                                     {player.name.substring(0, 2)}
                                 </div>
 
                                 <span className="font-bold text-gray-200">{player.name}</span>
-                                {player.name === username && <span className="text-xs text-primary-500 absolute bottom-3">나</span>}
+                                {player.id === socket?.id && <span className="text-xs text-primary-500 absolute bottom-3">나</span>}
 
                                 {/* 준비 완료 상태 뱃지 */}
                                 {player.ready && !player.isHost && (
@@ -90,7 +92,12 @@ export default function Room() {
 
             {/* 하단 컨트롤 바 */}
             <div className="flex gap-4 w-full max-w-md">
-                {!isHost ? (
+                {mySpectator ? (
+                    <div className="flex-1 py-4 px-6 rounded-xl border border-sky-500/50 bg-sky-900/20 text-center">
+                        <p className="text-sky-300 font-bold">관전 중</p>
+                        <p className="text-sm text-gray-400 mt-1">다시하기가 눌리면 자동으로 플레이어에 합류합니다.</p>
+                    </div>
+                ) : !isHost ? (
                     <button
                         onClick={handleToggleReady}
                         className={`flex-1 py-4 font-bold rounded-xl text-lg flex items-center justify-center gap-2 transition-colors 
@@ -111,6 +118,23 @@ export default function Room() {
                     </button>
                 )}
             </div>
+
+            {roomState.spectators.length > 0 && (
+                <div className="mt-6 w-full max-w-2xl bg-dark-800/80 border border-gray-700 rounded-2xl p-4">
+                    <div className="text-sm font-bold text-sky-300 mb-3">관전자 {roomState.spectators.length}명</div>
+                    <div className="flex flex-wrap gap-2">
+                        {roomState.spectators.map((spectator) => (
+                            <span
+                                key={spectator.id}
+                                className={`px-3 py-1 rounded-full text-sm border ${spectator.id === socket?.id ? 'border-sky-400 text-sky-300 bg-sky-900/30' : 'border-gray-700 text-gray-300 bg-dark-900'}`}
+                            >
+                                {spectator.name}
+                                {spectator.id === socket?.id && ' (나)'}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <button
                 onClick={handleLeaveRoom}

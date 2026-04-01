@@ -30,11 +30,6 @@ export default function Lobby() {
             return true;
         }
 
-        if (targetRoom.status !== 'waiting') {
-            setRoomError('이미 게임이 진행 중이거나 종료된 방입니다.');
-            return false;
-        }
-
         if (targetRoom.playersCount >= targetRoom.maxPlayers) {
             setRoomError('방이 꽉 찼습니다.');
             return false;
@@ -170,7 +165,7 @@ export default function Lobby() {
                                     onClick={() => handleJoinRoom(room.id)}
                                     className={`
                                         flex items-center justify-between p-4 rounded-xl border transition-all
-                                        ${room.status === 'waiting' && room.playersCount < room.maxPlayers
+                                        ${room.playersCount < room.maxPlayers
                                             ? 'bg-dark-900 border-gray-600 hover:border-primary-500 cursor-pointer hover:bg-dark-800'
                                             : 'bg-dark-900 border-gray-800 opacity-60 cursor-not-allowed'}
                                     `}
@@ -178,7 +173,11 @@ export default function Lobby() {
                                     <div className="flex flex-col">
                                         <span className="text-white font-bold text-lg">{room.id}</span>
                                         <span className="text-xs text-gray-400">
-                                            {room.status === 'waiting' ? '대기 중' : room.status === 'playing' ? `라운드 ${room.round} / 4 진행 중` : '결과 화면'}
+                                            {room.status === 'waiting'
+                                                ? '대기 중'
+                                                : room.status === 'playing'
+                                                    ? `라운드 ${room.round} / 4 진행 중 · 관전 가능`
+                                                    : '결과 화면 · 관전 가능'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">

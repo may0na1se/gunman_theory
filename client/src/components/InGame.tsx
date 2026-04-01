@@ -16,7 +16,6 @@ revolverSpinAudio.volume = 0.6;
 export default function InGame() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
-    const username = useGameStore(state => state.username);
 
     // 최종 순위 정보 상태
     const [rankings, setRankings] = useState<Player[] | null>(null);
@@ -207,7 +206,9 @@ export default function InGame() {
     if (!roomState) return null;
 
     const currentTurnPlayer = roomState.players[roomState.turnIndex];
-    const isMyTurn = currentTurnPlayer?.name === username;
+    const myPlayer = roomState.players.find(p => p.id === socket?.id) ?? null;
+    const mySpectator = roomState.spectators.find(s => s.id === socket?.id) ?? null;
+    const isMyTurn = currentTurnPlayer?.id === socket?.id;
 
     useEffect(() => {
         if (!isMyTurn) {
@@ -231,7 +232,7 @@ export default function InGame() {
     // 내 카드 사용 버튼 클릭 핸들러
     const handleUseCard = (cardName: ActiveCardType, needTarget: boolean) => {
         if (!isMyTurn || !socket) return;
-        const me = roomState.players.find(p => p.name === username);
+        const me = roomState.players.find(p => p.id === socket?.id);
         const cardMeta = CARD_INFO[cardName];
 
         if (cardMeta?.cost && me && me.money < cardMeta.cost) {
@@ -268,7 +269,7 @@ export default function InGame() {
 
     // 타겟 모드일 때 특정 유저를 클릭
     const handleTargetClick = (player: Player) => {
-        if (!isMyTurn || !player.isAlive || player.name === username) return;
+        if (!isMyTurn || !player.isAlive || player.id === socket?.id) return;
 
         if (activeCardMode) {
             socket?.emit('action_use_card', { cardName: activeCardMode, targetId: player.id });
@@ -392,6 +393,9 @@ export default function InGame() {
                 <h2 className="text-xl font-bold text-primary-500 tracking-widest">{roomState.id}</h2>
                 <p className="text-gray-400 font-semibold mb-2">Round {roomState.round} / 4</p>
                 <p className="text-sm text-gray-400">이번 베팅금: <span className="text-white font-bold">${roomState.currentBet}</span></p>
+                {roomState.spectators.length > 0 && (
+                    <p className="text-sm text-sky-300 mt-2">관전자 {roomState.spectators.length}명</p>
+                )}
             </div>
 
             {/* 우측 상단: 게임 진행 설명 패널 (크기 축소 및 위치 이동) */}
@@ -496,7 +500,15 @@ export default function InGame() {
 
             {/* 턴 액션 바 (내 턴일 때 중앙 하단) */}
             <div className="flex-1 flex flex-col items-center justify-center w-full my-8 relative pointer-events-none">
-                {isMyTurn ? (
+                {mySpectator ? (
+                    <div className="fixed bottom-8 z-30 flex flex-col items-center gap-2 bg-dark-800 p-4 rounded-2xl border-2 border-sky-500/60 shadow-2xl pointer-events-auto">
+                        <p className="text-sky-300 font-bold text-lg">관전 중입니다.</p>
+                        <p className="text-gray-400 text-sm">이 게임이 끝나고 다시하기가 눌리면 자동으로 플레이어가 됩니다.</p>
+                        <p className="text-yellow-500 font-bold text-sm tracking-widest">
+                            {currentTurnPlayer ? `${currentTurnPlayer.name}의 턴 (${turnTimerDisplay ?? 20}초 남음)` : '진행 상황 대기 중'}
+                        </p>
+                    </div>
+                ) : isMyTurn ? (
                     <div className="fixed bottom-8 z-30 flex flex-col gap-2 items-center animate-bounce bg-dark-800 p-4 rounded-2xl border-2 border-primary-500 shadow-2xl pointer-events-auto">
                         <div className="text-yellow-400 font-bold mb-1 tracking-widest text-sm">
                             내 턴! ({turnTimerDisplay ?? 20}초 남음)
@@ -532,8 +544,8 @@ export default function InGame() {
 
             {/* 내 카드 패널 (좌측 하단 고정) */}
             <AnimatePresence>
-                {roomState.players.find(p => p.name === username) && (() => {
-                    const me = roomState.players.find(p => p.name === username)!;
+                {myPlayer && (() => {
+                    const me = myPlayer;
                     const myCard = me.activeCard as ActiveCardType | null;
                     const cardMeta = myCard ? CARD_INFO[myCard] : null;
 
@@ -751,7 +763,7 @@ export default function InGame() {
                             })}
                         </div>
 
-                        {roomState.players.find(p => p.name === username)?.isHost ? (
+                        {myPlayer?.isHost ? (
                             <button
                                 onClick={() => {
                                     if (socket) {
@@ -801,7 +813,7 @@ export default function InGame() {
     // 플레이어 카드 렌더링 헬퍼 함수
     function renderPlayerCard(player: Player, globalIndex: number) {
         const isTurn = globalIndex === roomState!.turnIndex;
-        const isMe = player.name === username;
+        const isMe = player.id === socket?.id;
 
         return (
             <motion.div
@@ -812,7 +824,7 @@ export default function InGame() {
                     relative flex flex-col items-center bg-dark-800 rounded-2xl p-4 w-44 transition-all duration-300
                     ${isTurn ? 'ring-4 ring-primary-500 shadow-[0_0_20px_rgba(234,179,8,0.5)] -translate-y-2' : 'border border-gray-700'}
                     ${!player.isAlive && 'opacity-30 grayscale'}
-                    ${((activeCardMode && player.name !== username) || (isShootingMode && player.name !== username)) && player.isAlive ? 'cursor-pointer hover:ring-2 hover:ring-red-500' : ''}
+                    ${((activeCardMode && player.id !== socket?.id) || (isShootingMode && player.id !== socket?.id)) && player.isAlive ? 'cursor-pointer hover:ring-2 hover:ring-red-500' : ''}
 `}
             >
                 {/* 왼쪽 마커: 패시브 확률 조작기 (나인 경우 좌측하단에서 관리하지만, 직관주의 심리전을 위해 다른사람꺼는 보이게) */}

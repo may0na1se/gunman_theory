@@ -43,6 +43,10 @@ function App() {
       setRoomList(receivedRoomList);
     });
 
+    newSocket.on('room_closed', () => {
+      setRoomState(null);
+    });
+
     // 5. 클린업 (컴포넌트 언마운트 시)
     return () => {
       newSocket.close();

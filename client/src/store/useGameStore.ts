@@ -23,6 +23,11 @@ export interface Player {
     activeCard: ActiveCardType | null;
 }
 
+export interface Spectator {
+    id: string;
+    name: string;
+}
+
 export type ActiveCardType =
     | '강도' | '방탄복' | '도주' | '역주행'
     | '후원자 A' | '후원자 B' | '명상' | '탄약병'
@@ -49,6 +54,7 @@ export const CARD_INFO: Record<ActiveCardType, { desc: string; needTarget: boole
 export interface RoomState {
     id: string;
     players: Player[];
+    spectators: Spectator[];
     status: 'waiting' | 'playing' | 'finished';
     phase: 'playing' | 'betting'; // 새로 추가된 페이즈
     round: number;
