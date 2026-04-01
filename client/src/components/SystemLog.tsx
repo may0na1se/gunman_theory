@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 
+interface SystemMessage {
+    message: string;
+    type: 'presence' | 'round' | 'combat' | 'warning' | 'economy' | 'info';
+}
+
 export default function SystemLog() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
 
-    const [messages, setMessages] = useState<string[]>([]);
+    const [messages, setMessages] = useState<SystemMessage[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -15,8 +20,12 @@ export default function SystemLog() {
     useEffect(() => {
         if (!socket) return;
 
-        const handleSystemMessage = (message: string) => {
-            setMessages(prev => [...prev.slice(-79), message]);
+        const handleSystemMessage = (payload: SystemMessage | string) => {
+            const normalizedPayload = typeof payload === 'string'
+                ? { message: payload, type: 'info' as const }
+                : payload;
+
+            setMessages(prev => [...prev.slice(-79), normalizedPayload]);
         };
 
         socket.on('system_message', handleSystemMessage);
@@ -38,8 +47,23 @@ export default function SystemLog() {
                 style={{ scrollbarWidth: 'thin', scrollbarColor: '#4B5563 transparent' }}
             >
                 {messages.map((message, idx) => (
-                    <div key={idx} className="bg-dark-800/90 text-gray-200 px-3 py-2 rounded shadow-sm border-l-4 border-yellow-500 text-xs w-full break-keep animate-fade-in-up">
-                        {message}
+                    <div
+                        key={idx}
+                        className={`px-3 py-2 rounded shadow-sm text-xs w-full break-keep animate-fade-in-up ${
+                            message.type === 'presence'
+                                ? 'bg-dark-800/80 text-gray-300 border-l-4 border-gray-500'
+                                : message.type === 'round'
+                                    ? 'bg-yellow-900/20 text-yellow-100 border-l-4 border-yellow-500'
+                                    : message.type === 'combat'
+                                        ? 'bg-red-900/20 text-red-100 border-l-4 border-red-500'
+                                        : message.type === 'warning'
+                                            ? 'bg-orange-900/20 text-orange-100 border-l-4 border-orange-500'
+                                            : message.type === 'economy'
+                                                ? 'bg-emerald-900/20 text-emerald-100 border-l-4 border-emerald-500'
+                                                : 'bg-sky-900/20 text-sky-100 border-l-4 border-sky-500'
+                        }`}
+                    >
+                        {message.message}
                     </div>
                 ))}
                 <div ref={messagesEndRef} />

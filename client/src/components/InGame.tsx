@@ -18,6 +18,11 @@ const cardDrawAudio = new Audio(cardDrawSfx);
 cardDrawAudio.preload = 'auto';
 cardDrawAudio.volume = 0.7;
 
+interface SystemMessagePayload {
+    message: string;
+    type: 'presence' | 'round' | 'combat' | 'warning' | 'economy' | 'info';
+}
+
 export default function InGame() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
@@ -86,7 +91,9 @@ export default function InGame() {
         if (!socket) return;
 
         // 글로벌 메시지(사격 적중/파산 등)가 올 때 화면 흔들기 감지 및 사운드 재생
-        const handleSystemMessage = (msg: string) => {
+        const handleSystemMessage = (payload: SystemMessagePayload | string) => {
+            const msg = typeof payload === 'string' ? payload : payload.message;
+
             // 키워드 기반 화면 진동 및 섬광
             if (msg.includes('적중') || msg.includes('사살')) {
                 triggerShake('red');

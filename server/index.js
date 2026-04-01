@@ -76,8 +76,46 @@ function emitRoomState(roomId, room) {
     io.to(roomId).emit('room_state_update', getSerializableRoom(room));
 }
 
+function getSystemMessageType(message) {
+    if (message.includes('플레이어로 입장') || message.includes('관전하러 들어왔습니다') || message.includes('퇴장')) {
+        return 'presence';
+    }
+
+    if (message.includes('라운드') && (message.includes('시작되었습니다') || message.includes('종료'))) {
+        return 'round';
+    }
+
+    if (
+        message.includes('[적중]') ||
+        message.includes('[불발]') ||
+        message.includes('[도탄]') ||
+        message.includes('[저주]')
+    ) {
+        return 'combat';
+    }
+
+    if (message.includes('시간 초과') || message.includes('⚠️')) {
+        return 'warning';
+    }
+
+    if (
+        message.includes('[파산]') ||
+        message.includes('보험') ||
+        message.includes('후원금') ||
+        message.includes('[발악]') ||
+        message.includes('카드를 뽑았습니다')
+    ) {
+        return 'economy';
+    }
+
+    return 'info';
+}
+
 function emitSystemMessage(roomId, message) {
-    io.to(roomId).emit('system_message', message);
+    io.to(roomId).emit('system_message', {
+        message,
+        type: getSystemMessageType(message)
+    });
 }
 
 function broadcastRooms() {
@@ -312,7 +350,7 @@ function processNextRoundStart(room, betAmount, io) {
     room.turnIndex = winnerIndex !== -1 ? winnerIndex : -1;
     startNextTurn(room);
 
-    emitSystemMessage(room.id, `📣 라운드 ${room.round} 시작! 기준 베팅금: $${room.currentBet}`);
+    emitSystemMessage(room.id, `📣 ${room.round} 라운드가 시작되었습니다! 기준 베팅금: $${room.currentBet}`);
     emitRoomState(room.id, room);
 }
 
@@ -389,6 +427,7 @@ io.on('connection', (socket) => {
         } else {
             room.players.push(createPlayer(socket.id, normalizedUsername, room.players.length === 0));
             socket.data.isSpectator = false;
+            emitSystemMessage(normalizedRoomId, `🙋 ${normalizedUsername}님이 플레이어로 입장했습니다.`);
         }
 
         // 소켓 객체에 현재 방 정보 저장 (disconnect 시 활용)
@@ -472,6 +511,7 @@ io.on('connection', (socket) => {
                 // 첫 번째 유저(0번 인덱스)의 턴을 명시적으로 시작(자동 베팅 적용을 위해 현재 턴을 -1로 두고 넘김)
                 room.turnIndex = -1;
                 startNextTurn(room);
+                emitSystemMessage(roomId, `📣 1 라운드가 시작되었습니다! 기준 베팅금: $${room.currentBet}`);
 
                 console.log(`[게임 시작] [${roomId}] 게임이 시작되었습니다.`);
                 emitRoomState(roomId, room);
@@ -822,6 +862,9 @@ io.on('connection', (socket) => {
             const disconnectedSpectatorIndex = room.spectators.findIndex(s => s.id === socket.id);
             const isSpectator = disconnectedSpectatorIndex !== -1;
             const isTurnPlayer = !isSpectator && room.status === 'playing' && disconnectedPlayerIndex === room.turnIndex;
+            const departedName = isSpectator
+                ? room.spectators[disconnectedSpectatorIndex]?.name
+                : room.players[disconnectedPlayerIndex]?.name;
 
             if (isSpectator) {
                 room.spectators = room.spectators.filter(s => s.id !== socket.id);
@@ -832,11 +875,21 @@ io.on('connection', (socket) => {
             if (room.players.length === 0) {
                 clearTurnTimeout(room);
                 if (room.bettingTimeout) clearTimeout(room.bettingTimeout);
+                if (departedName) {
+                    emitSystemMessage(roomId, isSpectator
+                        ? `👋 관전자 ${departedName}님이 퇴장했습니다.`
+                        : `👋 플레이어 ${departedName}님이 퇴장하여 방이 종료됩니다.`);
+                }
                 io.to(roomId).emit('room_closed');
                 io.in(roomId).socketsLeave(roomId);
                 rooms.delete(roomId);
                 console.log(`[삭제] [${roomId}] 플레이어가 없어 방 삭제`);
             } else {
+                if (departedName) {
+                    emitSystemMessage(roomId, isSpectator
+                        ? `👋 관전자 ${departedName}님이 퇴장했습니다.`
+                        : `👋 플레이어 ${departedName}님이 퇴장했습니다.`);
+                }
                 if (!isSpectator) {
                     // 남은 유저가 있고, 나간 유저가 방장(Host)이었다면 호스트 넘겨주기
                     const hasHost = room.players.some(p => p.isHost);
