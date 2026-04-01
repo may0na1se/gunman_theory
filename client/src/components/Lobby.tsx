@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 
 export default function Lobby() {
@@ -6,6 +6,42 @@ export default function Lobby() {
     const [nameInput, setNameInput] = useState('');
     const [roomInput, setRoomInput] = useState('');
     const [nameError, setNameError] = useState('');
+    const [roomError, setRoomError] = useState('');
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleJoinRoomError = (message: string) => {
+            setRoomError(message);
+        };
+
+        socket.on('join_room_error', handleJoinRoomError);
+
+        return () => {
+            socket.off('join_room_error', handleJoinRoomError);
+        };
+    }, [socket]);
+
+    const validateJoinTarget = (targetRoomId: string) => {
+        const normalizedRoomId = targetRoomId.trim().toUpperCase();
+        const targetRoom = roomList.find(room => room.id === normalizedRoomId);
+
+        if (!targetRoom) {
+            return true;
+        }
+
+        if (targetRoom.status !== 'waiting') {
+            setRoomError('이미 게임이 진행 중이거나 종료된 방입니다.');
+            return false;
+        }
+
+        if (targetRoom.playersCount >= targetRoom.maxPlayers) {
+            setRoomError('방이 꽉 찼습니다.');
+            return false;
+        }
+
+        return true;
+    };
 
     const handleJoin = (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,11 +55,18 @@ export default function Lobby() {
             return;
         }
 
+        const normalizedRoomId = roomInput.trim().toUpperCase();
+        if (!validateJoinTarget(normalizedRoomId)) {
+            return;
+        }
+
+        setRoomError('');
+
         setUsername(nameInput);
-        setRoomId(roomInput);
+        setRoomId(normalizedRoomId);
 
         // 서버로 방 입장 요청
-        socket.emit('join_room', { roomId: roomInput, username: nameInput });
+        socket.emit('join_room', { roomId: normalizedRoomId, username: nameInput });
     };
 
     const handleJoinRoom = (targetRoomId: string) => {
@@ -33,6 +76,12 @@ export default function Lobby() {
         }
         setNameError('');
         if (!socket || !isConnected) return;
+
+        if (!validateJoinTarget(targetRoomId)) {
+            return;
+        }
+
+        setRoomError('');
 
         setUsername(nameInput);
         setRoomId(targetRoomId);
@@ -73,16 +122,22 @@ export default function Lobby() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">방 코드</label>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">방 제목</label>
                             <input
                                 type="text"
                                 maxLength={10}
                                 required
                                 value={roomInput}
-                                onChange={e => setRoomInput(e.target.value.toUpperCase())}
-                                className="w-full bg-dark-900 border border-gray-600 rounded-lg px-4 py-3 text-white uppercase focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all font-bold tracking-widest"
-                                placeholder="예: ROOM123"
+                                onChange={e => {
+                                    setRoomInput(e.target.value.toUpperCase());
+                                    if (roomError) setRoomError('');
+                                }}
+                                className={`w-full bg-dark-900 border rounded-lg px-4 py-3 text-white uppercase focus:outline-none focus:ring-1 transition-all font-bold tracking-widest ${roomError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-600 focus:border-primary-500 focus:ring-primary-500'}`}
+                                placeholder=""
                             />
+                            {roomError && (
+                                <p className="mt-2 text-sm font-medium text-red-400">{roomError}</p>
+                            )}
                         </div>
 
                         <button
@@ -112,17 +167,7 @@ export default function Lobby() {
                             {roomList.map((room) => (
                                 <div
                                     key={room.id}
-                                    onClick={() => {
-                                        if (room.status === 'playing' || room.status === 'finished') {
-                                            alert('이미 게임이 진행 중이거나 종료된 방입니다.');
-                                            return;
-                                        }
-                                        if (room.playersCount >= room.maxPlayers) {
-                                            alert('방이 꽉 찼습니다.');
-                                            return;
-                                        }
-                                        handleJoinRoom(room.id);
-                                    }}
+                                    onClick={() => handleJoinRoom(room.id)}
                                     className={`
                                         flex items-center justify-between p-4 rounded-xl border transition-all
                                         ${room.status === 'waiting' && room.playersCount < room.maxPlayers
@@ -133,7 +178,7 @@ export default function Lobby() {
                                     <div className="flex flex-col">
                                         <span className="text-white font-bold text-lg">{room.id}</span>
                                         <span className="text-xs text-gray-400">
-                                            {room.status === 'waiting' ? '대기 중' : room.status === 'playing' ? `라운드 ${room.round} 진행 중` : '결과 화면'}
+                                            {room.status === 'waiting' ? '대기 중' : room.status === 'playing' ? `라운드 ${room.round} / 4 진행 중` : '결과 화면'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">

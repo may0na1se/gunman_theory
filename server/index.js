@@ -272,11 +272,41 @@ io.on('connection', (socket) => {
 
     // 방 참가/생성 로직
     socket.on('join_room', ({ roomId, username }) => {
-        socket.join(roomId);
+        const normalizedRoomId = String(roomId ?? '').trim().toUpperCase();
+        const normalizedUsername = String(username ?? '').trim().slice(0, 10);
 
-        if (!rooms.has(roomId)) {
-            rooms.set(roomId, {
-                id: roomId,
+        if (!normalizedRoomId) {
+            socket.emit('join_room_error', '방 코드를 입력하세요!');
+            return;
+        }
+
+        if (!normalizedUsername) {
+            socket.emit('join_room_error', '닉네임을 입력하세요!');
+            return;
+        }
+
+        const existingRoom = rooms.get(normalizedRoomId);
+        const existingPlayerIndex = existingRoom
+            ? existingRoom.players.findIndex(p => p.id === socket.id)
+            : -1;
+
+        if (existingRoom && existingPlayerIndex === -1) {
+            if (existingRoom.status !== 'waiting') {
+                socket.emit('join_room_error', '이미 게임이 진행 중이거나 종료된 방입니다.');
+                return;
+            }
+
+            if (existingRoom.players.length >= 8) {
+                socket.emit('join_room_error', '방이 꽉 찼습니다.');
+                return;
+            }
+        }
+
+        socket.join(normalizedRoomId);
+
+        if (!rooms.has(normalizedRoomId)) {
+            rooms.set(normalizedRoomId, {
+                id: normalizedRoomId,
                 players: [],
                 status: 'waiting', // waiting, playing, finished
                 phase: 'playing', // playing, betting (베팅 금액 선정)
@@ -290,17 +320,16 @@ io.on('connection', (socket) => {
             });
         }
 
-        const room = rooms.get(roomId);
+        const room = rooms.get(normalizedRoomId);
 
         // 이미 있는 유저면 이름 변경, 아니면 새로 추가
-        const existingPlayerIndex = room.players.findIndex(p => p.id === socket.id);
         if (existingPlayerIndex >= 0) {
-            room.players[existingPlayerIndex].name = username;
+            room.players[existingPlayerIndex].name = normalizedUsername;
             room.players[existingPlayerIndex].ready = true;
         } else {
             room.players.push({
                 id: socket.id,
-                name: username,
+                name: normalizedUsername,
                 isHost: room.players.length === 0,
                 ready: true,
                 money: 200,
@@ -323,13 +352,13 @@ io.on('connection', (socket) => {
         }
 
         // 소켓 객체에 현재 방 정보 저장 (disconnect 시 활용)
-        socket.data.roomId = roomId;
-        socket.data.username = username;
+        socket.data.roomId = normalizedRoomId;
+        socket.data.username = normalizedUsername;
 
-        console.log(`[입장] [${roomId}] 방에 ${username}(${socket.id}) 입장`);
+        console.log(`[입장] [${normalizedRoomId}] 방에 ${normalizedUsername}(${socket.id}) 입장`);
 
         // 방 안의 모든 유저에게 새로운 방 상태 브로드캐스트
-        emitRoomState(roomId, room);
+        emitRoomState(normalizedRoomId, room);
 
         // 방 참가 또는 방 신규 생성으로 인원수/상태가 변했으므로 로비 유저들에게도 목록 업데이트
         broadcastRooms();
