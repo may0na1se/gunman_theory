@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Coffee, Crown, Dice5 } from 'lucide-react';
 import { type RouletteEntry, useGameStore } from '../store/useGameStore';
+import FixedStage from './FixedStage';
 
 interface RouletteGoalMessage {
     type: 'roulette_goal';
@@ -164,8 +165,11 @@ export default function RouletteRoom() {
     };
 
     return (
-        <div className="min-h-screen bg-dark-900 px-4 py-10 lg:pl-[22rem]">
-            <div className="mx-auto flex w-full max-w-[calc(100vw-24rem)] flex-col gap-6 lg:max-w-7xl">
+        <FixedStage className="bg-dark-900">
+        <div className="h-full w-full overflow-hidden px-8 py-8">
+            <div className="flex h-full w-full gap-8">
+                <div className="w-[360px] shrink-0" />
+                <div className="min-w-0 flex-1 flex flex-col gap-6">
                 <div className="rounded-3xl border border-gray-700 bg-dark-800/80 p-6 shadow-2xl backdrop-blur-md">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
@@ -184,7 +188,7 @@ export default function RouletteRoom() {
                     </div>
                 </div>
 
-                <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+                <div className="grid min-h-0 flex-1 gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
                     <aside className="rounded-3xl border border-gray-700 bg-dark-800/70 p-6 shadow-xl backdrop-blur-md">
                         <h2 className="text-lg font-black text-white">기본 확률표</h2>
                         <p className="mt-2 text-sm text-gray-400">높은 순위를 할수록 공 개수가 적고, 낮은 순위일수록 공 개수가 많습니다.</p>
@@ -232,7 +236,7 @@ export default function RouletteRoom() {
                         )}
                     </aside>
 
-                    <section className="rounded-3xl border border-gray-700 bg-dark-800/70 p-6 shadow-xl backdrop-blur-md">
+                    <section className="min-h-0 rounded-3xl border border-gray-700 bg-dark-800/70 p-6 shadow-xl backdrop-blur-md">
                         {isSetup ? (
                             <>
                                 <div className="flex items-center justify-between gap-4">
@@ -322,16 +326,16 @@ export default function RouletteRoom() {
                                             key={`${roomState.roulette.sessionId}-${roomState.roulette.seed}-presenter`}
                                             src={iframeSrc}
                                             title="roulette"
-                                            className="h-[70vh] min-h-[560px] w-full"
+                                            className="h-[560px] w-full"
                                         />
                                     ) : streamFrame ? (
                                         <img
                                             src={streamFrame}
                                             alt="roulette live view"
-                                            className="h-[70vh] min-h-[560px] w-full object-contain"
+                                            className="h-[560px] w-full object-contain"
                                         />
                                     ) : (
-                                        <div className="flex h-[70vh] min-h-[560px] items-center justify-center text-lg font-bold text-gray-500">
+                                        <div className="flex h-[560px] items-center justify-center text-lg font-bold text-gray-500">
                                             {isPresenter ? '핀볼 화면을 준비 중입니다...' : '방장이 핀볼 화면을 송출하는 중입니다...'}
                                         </div>
                                     )}
@@ -370,7 +374,9 @@ export default function RouletteRoom() {
                         )}
                     </section>
                 </div>
+                </div>
             </div>
         </div>
+        </FixedStage>
     );
 }
