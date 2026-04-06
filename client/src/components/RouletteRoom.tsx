@@ -57,12 +57,13 @@ export default function RouletteRoom() {
 
     const iframeSrc = useMemo(() => {
         if (!isRunning || !roomState.roulette?.seed || !roomState.roulette?.startedAt) return '';
+        const totalMarbleCount = roomState.roulette.entries.reduce((sum, entry) => sum + entry.count, 0);
 
         const params = new URLSearchParams();
         params.set('names', formatEntryNames(roomState.roulette.entries));
         params.set('embed', '1');
         params.set('autostart', '1');
-        params.set('rank', '1');
+        params.set('rank', String(totalMarbleCount));
         params.set('seed', roomState.roulette.seed);
         params.set('startAt', String(roomState.roulette.startedAt));
         params.set('session', String(roomState.roulette.sessionId));
@@ -122,7 +123,7 @@ export default function RouletteRoom() {
             } catch (error) {
                 console.error('roulette frame capture failed', error);
             }
-        }, 90);
+        }, 66);
 
         return () => {
             window.clearInterval(interval);
@@ -312,7 +313,7 @@ export default function RouletteRoom() {
                                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                     <div>
                                         <h2 className="text-2xl font-black text-white">오늘의 커피 담당 추첨</h2>
-                                        <p className="mt-1 text-sm text-gray-400">모든 참가자가 같은 핀볼 세션을 보고 있습니다. 결과가 정해질 때까지 잠깐만 기다려 주세요.</p>
+                                        <p className="mt-1 text-sm text-gray-400">마지막까지 살아남는 공 1개가 오늘의 커피 담당이 됩니다. 끝까지 같이 지켜봐 주세요.</p>
                                     </div>
                                     <div className="rounded-full border border-sky-500/40 bg-sky-900/20 px-4 py-2 text-sm font-bold text-sky-300">
                                         공 {roomState.roulette.entries.reduce((sum, entry) => sum + entry.count, 0)}개
