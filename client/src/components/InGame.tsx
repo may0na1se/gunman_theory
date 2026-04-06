@@ -245,6 +245,10 @@ export default function InGame() {
     const mySpectator = roomState.spectators.find(s => s.id === socket?.id) ?? null;
     const isMyTurn = currentTurnPlayer?.id === socket?.id;
     const displayedRankings = rankings ?? roomState.finalRankings;
+    const topPlayers = roomState.players.slice(0, 4);
+    const bottomPlayers = roomState.players.slice(4, 8);
+    const topSlots = Array.from({ length: 4 }, (_, index) => topPlayers[index] ?? null);
+    const bottomSlots = Array.from({ length: 4 }, (_, index) => bottomPlayers[index] ?? null);
 
     useEffect(() => {
         if (!isMyTurn) {
@@ -465,18 +469,24 @@ export default function InGame() {
                 </div>
             </div>
 
-            {/* 플레이어 렌더링 영역 (Top 4, Bottom 4) */}
-            <div className="z-10 w-full max-w-[920px] flex flex-col justify-between flex-1 my-8 mx-auto">
+            {/* 플레이어 렌더링 영역 (Top 4, Bottom 4, Pot) */}
+            <div className="absolute left-1/2 top-10 z-10 h-[660px] w-full max-w-[920px] -translate-x-1/2">
 
                 {/* Top 4 Players (idx 0~3) */}
-                <div className="flex justify-center gap-4 w-full">
-                    {roomState.players.slice(0, 4).map((player: Player, idx: number) =>
-                        renderPlayerCard(player, idx) // 원본 배열 인덱스 유지
-                    )}
+                <div className="absolute inset-x-0 top-0 grid grid-cols-4 gap-4 w-full">
+                    {topSlots.map((player, idx) => (
+                        <div key={`top-slot-${idx}`} className="flex justify-center">
+                            {player ? (
+                                renderPlayerCard(player, idx)
+                            ) : (
+                                <div className="h-[252px] w-44 opacity-0 pointer-events-none" />
+                            )}
+                        </div>
+                    ))}
                 </div>
 
                 {/* 중앙 Pot (판돈) 및 카드 연출 영역 */}
-                <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center pointer-events-none">
+                <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center pointer-events-none">
 
                     {/* 중앙 Pot (판돈) - 애니메이션 부여 */}
                     <motion.div
@@ -498,7 +508,7 @@ export default function InGame() {
                 </div>
 
                 {/* 방금 사용된 카드 (판돈 오른쪽 고정) */}
-                <div className="absolute top-[45%] left-1/2 z-20 pointer-events-none" style={{ transform: 'translate(180px, -50%)' }}>
+                <div className="absolute left-1/2 top-1/2 z-20 pointer-events-none" style={{ transform: 'translate(180px, -50%)' }}>
                     <AnimatePresence>
                         {lastUsedCard && (
                             <motion.div
@@ -526,10 +536,16 @@ export default function InGame() {
                 </div>
 
                 {/* Bottom 4 Players (idx 4~7) */}
-                <div className="flex justify-center gap-4 w-full mt-auto translate-y-36">
-                    {roomState.players.slice(4, 8).map((player: Player, jdx: number) =>
-                        renderPlayerCard(player, jdx + 4) // 원본 배열 인덱스 유지
-                    )}
+                <div className="absolute inset-x-0 bottom-0 grid grid-cols-4 gap-4 w-full">
+                    {bottomSlots.map((player, idx) => (
+                        <div key={`bottom-slot-${idx}`} className="flex justify-center">
+                            {player ? (
+                                renderPlayerCard(player, idx + 4)
+                            ) : (
+                                <div className="h-[252px] w-44 opacity-0 pointer-events-none" />
+                            )}
+                        </div>
+                    ))}
                 </div>
             </div>
 
