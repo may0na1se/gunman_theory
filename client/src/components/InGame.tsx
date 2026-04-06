@@ -625,8 +625,8 @@ export default function InGame() {
                                 </div>
 
                                 {/* 액티브 카드 정보 영역 */}
-                                <div className="flex flex-col justify-between w-[320px] min-w-[320px] max-w-[320px] bg-dark-900 border border-blue-900/50 p-3 rounded-xl shadow-inner relative overflow-hidden">
-                                    <div>
+                                <div className="flex h-full flex-col justify-between w-[320px] min-w-[320px] max-w-[320px] bg-dark-900 border border-blue-900/50 p-3 rounded-xl shadow-inner relative">
+                                    <div className="min-h-0">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-blue-400 text-sm font-bold">액티브 카드</span>
                                         </div>
@@ -638,16 +638,18 @@ export default function InGame() {
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-sm text-gray-300 leading-relaxed min-h-[56px] max-w-full break-keep">
-                                            {cardMeta
-                                                ? cardMeta.desc
-                                                : '내 턴에 무작위 새 카드를 받을 수 있습니다.'}
-                                        </p>
+                                        <div className="max-w-full min-h-[56px] max-h-[56px] overflow-y-auto pr-1">
+                                            <p className="text-sm text-gray-300 leading-relaxed break-keep">
+                                                {cardMeta
+                                                    ? cardMeta.desc
+                                                    : '내 턴에 무작위 새 카드를 받을 수 있습니다.'}
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* 카드 사용 버튼 (우측 하단으로 이동, 큼지막하게) */}
                                     {myCard && cardMeta && isMyTurn && (
-                                        <div className="flex justify-end mt-2">
+                                        <div className="flex justify-end mt-3 shrink-0">
                                             <button
                                                 onClick={() => handleUseCard(myCard, cardMeta.needTarget)}
                                                 className={`text-white text-sm font-bold py-2 px-6 rounded-lg shadow-lg transition-colors flex items-center justify-center gap-2 w-full md:w-auto
