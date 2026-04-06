@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameStore, CARD_INFO, type Player, type ActiveCardType } from '../store/useGameStore';
 import { Skull, Target, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import FixedStage from './FixedStage';
 import targetPng from '../assets/target.png';
 import firedSfx from '../assets/fired.mp3';
 import failedSfx from '../assets/failed.mp3';
@@ -26,6 +27,7 @@ interface SystemMessagePayload {
 export default function InGame() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
+    const stageRef = useRef<HTMLDivElement | null>(null);
 
     // 최종 순위 정보 상태
     const [rankings, setRankings] = useState<Player[] | null>(null);
@@ -158,13 +160,26 @@ export default function InGame() {
         if (!socket) return;
         const handleMouseMove = (e: MouseEvent) => {
             if (!isShootingMode) return;
+            const stageElement = stageRef.current;
+            if (!stageElement) return;
+            const rect = stageElement.getBoundingClientRect();
+            if (
+                e.clientX < rect.left ||
+                e.clientX > rect.right ||
+                e.clientY < rect.top ||
+                e.clientY > rect.bottom
+            ) {
+                return;
+            }
 
-            // 내 화면에 크게 보일 커서 좌표 저장
-            setMyCursorPos({ x: e.clientX, y: e.clientY });
+            const normalizedX = (e.clientX - rect.left) / rect.width;
+            const normalizedY = (e.clientY - rect.top) / rect.height;
+
+            setMyCursorPos({ x: normalizedX, y: normalizedY });
 
             socket.emit('mouse_move', {
-                x: e.clientX / window.innerWidth,
-                y: e.clientY / window.innerHeight,
+                x: normalizedX,
+                y: normalizedY,
                 isShootingMode: true
             });
         };
@@ -301,21 +316,22 @@ export default function InGame() {
         }
     };
     return (
+        <FixedStage stageRef={stageRef} className="bg-dark-900">
         <motion.div
             animate={{
                 x: isShaking ? [-10, 10, -10, 10, 0] : 0,
                 y: isShaking ? [-10, 10, -10, 10, 0] : 0
             }}
             transition={{ duration: 0.15 }}
-            className={`relative min-h-screen p-4 flex flex-col items-center justify-between overflow-hidden py-12 bg-dark-900 w-full ${isShootingMode ? 'cursor-none' : 'cursor-default'}`}
+            className={`relative h-full w-full overflow-hidden bg-dark-900 ${isShootingMode ? 'cursor-none' : 'cursor-default'}`}
         >
             {/* 내 사격용 거대 커서 (내 화면 전용, 64x64 사이즈) */}
             {isShootingMode && (
                 <div
                     className="fixed z-[100] pointer-events-none"
                     style={{
-                        left: myCursorPos.x,
-                        top: myCursorPos.y,
+                        left: `${myCursorPos.x * 100}%`,
+                        top: `${myCursorPos.y * 100}%`,
                         transform: 'translate(-50%, -50%)',
                         backgroundImage: `url(${targetPng})`,
                         backgroundSize: 'contain',
@@ -338,8 +354,8 @@ export default function InGame() {
                     key={cursor.id}
                     className="fixed z-50 pointer-events-none"
                     style={{
-                        left: `${cursor.x * 100}vw`,
-                        top: `${cursor.y * 100}vh`,
+                        left: `${cursor.x * 100}%`,
+                        top: `${cursor.y * 100}%`,
                         transform: 'translate(-50%, -50%)',
                         backgroundImage: `url(${targetPng})`,
                         backgroundSize: 'contain',
@@ -450,7 +466,7 @@ export default function InGame() {
             </div>
 
             {/* 플레이어 렌더링 영역 (Top 4, Bottom 4) */}
-            <div className="z-10 w-full max-w-6xl flex flex-col justify-between flex-1 my-8">
+            <div className="z-10 w-full max-w-[920px] flex flex-col justify-between flex-1 my-8 mx-auto">
 
                 {/* Top 4 Players (idx 0~3) */}
                 <div className="flex justify-center gap-4 w-full">
@@ -576,7 +592,7 @@ export default function InGame() {
                                 initial={{ y: 100, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 exit={{ y: 100, opacity: 0 }}
-                                className="fixed bottom-4 left-4 z-40 flex gap-4 bg-dark-800/90 p-4 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-44"
+                                className="fixed bottom-4 left-4 z-40 flex gap-4 bg-dark-800/90 p-4 rounded-2xl border border-gray-600 shadow-2xl backdrop-blur-sm h-44 w-[560px] min-w-[560px] max-w-[560px]"
                             >
                                 {/* 패시브 조작 영역 */}
                                 <div className="flex flex-col items-center justify-between bg-dark-900 border border-gray-700 p-3 rounded-xl w-44 shadow-inner">
@@ -609,20 +625,20 @@ export default function InGame() {
                                 </div>
 
                                 {/* 액티브 카드 정보 영역 */}
-                                <div className="flex flex-col justify-between flex-1 min-w-[280px] max-w-[360px] bg-dark-900 border border-blue-900/50 p-3 rounded-xl shadow-inner relative">
+                                <div className="flex flex-col justify-between w-[320px] min-w-[320px] max-w-[320px] bg-dark-900 border border-blue-900/50 p-3 rounded-xl shadow-inner relative overflow-hidden">
                                     <div>
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-blue-400 text-sm font-bold">액티브 카드</span>
                                         </div>
-                                        <div className="text-2xl font-black text-white mb-3 flex items-center gap-2">
-                                            {myCard || '카드 없음'}
+                                        <div className="text-2xl font-black text-white mb-3 flex flex-wrap items-center gap-2 break-keep">
+                                            <span className="break-keep">{myCard || '카드 없음'}</span>
                                             {cardMeta?.cost && (
                                                 <span className="text-red-500 text-sm font-bold bg-red-900/30 px-2 py-1 rounded-md border border-red-900/50 transform -translate-y-0.5">
                                                     (비용: ${cardMeta.cost})
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-sm text-gray-300 leading-relaxed min-h-[40px]">
+                                        <p className="text-sm text-gray-300 leading-relaxed min-h-[56px] max-w-full break-keep">
                                             {cardMeta
                                                 ? cardMeta.desc
                                                 : '내 턴에 무작위 새 카드를 받을 수 있습니다.'}
@@ -841,6 +857,7 @@ export default function InGame() {
                 )}
             </AnimatePresence>
         </motion.div>
+        </FixedStage>
     );
 
     // 플레이어 카드 렌더링 헬퍼 함수

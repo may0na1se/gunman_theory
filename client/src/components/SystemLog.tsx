@@ -38,13 +38,28 @@ export default function SystemLog() {
 
     if (!roomState) return null;
 
+    const systemLogStyle = isRouletteLayout
+        ? {
+            top: 'calc(44vh + 1.5rem)',
+            left: '1rem',
+            right: 'auto',
+            transform: 'none',
+            height: '32vh',
+            maxHeight: '32vh'
+        }
+        : {
+            top: '50%',
+            left: 'auto',
+            right: '1rem',
+            transform: 'translateY(-50%)',
+            height: '24rem',
+            maxHeight: '60vh'
+        };
+
     return (
         <div
-            className={`fixed z-[500] flex flex-col w-80 bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto ${
-                isRouletteLayout
-                    ? 'left-4 top-[calc(44vh+1.5rem)] h-[32vh] min-h-[220px] max-h-[32vh]'
-                    : 'right-4 top-1/2 -translate-y-1/2 h-96 max-h-[60vh]'
-            }`}
+            className="fixed z-[500] flex flex-col w-80 min-h-[220px] bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto"
+            style={systemLogStyle}
         >
             <div className="px-3 py-2 border-b border-gray-700/50 text-sm font-bold text-yellow-400">
                 시스템 로그

@@ -46,13 +46,28 @@ export default function Chat() {
     // 방에 없으면 채팅창 숨김 (로비에서는 안 보임)
     if (!roomState) return null;
 
+    const rouletteStyle = isRouletteLayout
+        ? {
+            top: '1rem',
+            left: '1rem',
+            right: 'auto',
+            transform: 'none',
+            height: '44vh',
+            maxHeight: '44vh'
+        }
+        : {
+            top: '50%',
+            left: '1rem',
+            right: 'auto',
+            transform: 'translateY(-50%)',
+            height: '24rem',
+            maxHeight: '60vh'
+        };
+
     return (
         <div
-            className={`fixed left-4 z-[500] flex flex-col w-80 bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto ${
-                isRouletteLayout
-                    ? 'top-4 h-[44vh] min-h-[320px] max-h-[44vh]'
-                    : 'top-1/2 -translate-y-1/2 h-96 max-h-[60vh]'
-            }`}
+            className="fixed z-[500] flex flex-col w-80 min-h-[320px] bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto"
+            style={rouletteStyle}
         >
             <div className="px-3 py-2 border-b border-gray-700/50 text-sm font-bold text-primary-500">
                 채팅
