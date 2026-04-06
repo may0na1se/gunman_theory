@@ -177,7 +177,7 @@ export default function RouletteRoom() {
                         <div>
                             <div className="text-sm font-bold uppercase tracking-[0.35em] text-sky-300">Pinball Mode</div>
                             <h1 className="mt-2 text-4xl font-black text-white">
-                                {isSetup ? '핀볼 내기 설정' : '핀볼 공동 관람'}
+                                {isSetup ? '커피빵 핀볼 설정' : '핀볼 공동 관람'}
                             </h1>
                             <p className="mt-2 text-gray-400">
                                 게임 결과 순위로 기본 공 개수를 만들었고, 방장이 필요하면 직접 조정할 수 있습니다.
@@ -321,7 +321,7 @@ export default function RouletteRoom() {
                                     </div>
                                 </div>
 
-                                <div className="mt-6 overflow-hidden rounded-3xl border border-gray-700 bg-black shadow-[0_0_40px_rgba(0,0,0,0.35)]">
+                                <div className="relative mt-6 overflow-hidden rounded-3xl border border-gray-700 bg-black shadow-[0_0_40px_rgba(0,0,0,0.35)]">
                                     {isPresenter && iframeSrc ? (
                                         <iframe
                                             ref={iframeRef}
@@ -341,29 +341,31 @@ export default function RouletteRoom() {
                                             {isPresenter ? '핀볼 화면을 준비 중입니다...' : '방장이 핀볼 화면을 송출하는 중입니다...'}
                                         </div>
                                     )}
-                                </div>
 
-                                {roomState.roulette.winnerName ? (
-                                    <div className="mt-6 rounded-3xl border border-emerald-500/40 bg-emerald-900/20 px-6 py-5">
-                                        <div className="flex flex-col gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="rounded-full bg-emerald-500/20 p-3 text-emerald-300">
-                                                    <Coffee size={24} />
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold uppercase tracking-[0.3em] text-emerald-300">Result</div>
-                                                    <div className="mt-1 text-2xl font-black text-white">
-                                                        {roomState.roulette.winnerName}님이 오늘의 커피 담당입니다.
+                                    {roomState.roulette.winnerName && (
+                                        <div className="pointer-events-none absolute inset-x-6 bottom-6 z-10">
+                                            <div className="rounded-3xl border border-emerald-500/40 bg-emerald-900/85 px-6 py-5 shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="rounded-full bg-emerald-500/20 p-3 text-emerald-300">
+                                                        <Coffee size={24} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold uppercase tracking-[0.3em] text-emerald-300">Result</div>
+                                                        <div className="mt-1 text-2xl font-black text-white">
+                                                            {roomState.roulette.winnerName}님이 오늘의 커피 담당입니다.
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ) : (
+                                    )}
+                                </div>
+
+                                {!roomState.roulette.winnerName ? (
                                     <div className="mt-6 rounded-2xl border border-gray-700 bg-dark-900/80 px-6 py-5 text-center text-gray-400">
                                         {isPresenter ? '방장 화면이 실시간으로 송출되고 있습니다.' : '방장 화면을 같이 보는 중입니다. 결과가 정해질 때까지 잠깐만 기다려 주세요.'}
                                     </div>
-                                )}
+                                ) : null}
                             </>
                         )}
                     </section>
