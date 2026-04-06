@@ -10,6 +10,7 @@ interface ChatMessage {
 export default function Chat() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
+    const isRouletteLayout = roomState?.status === 'roulette_setup' || roomState?.status === 'roulette_running';
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState('');
@@ -47,7 +48,11 @@ export default function Chat() {
 
     return (
         <div
-            className="fixed top-1/2 -translate-y-1/2 left-4 z-[500] flex flex-col w-80 h-96 max-h-[60vh] bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto"
+            className={`fixed left-4 z-[500] flex flex-col w-80 bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto ${
+                isRouletteLayout
+                    ? 'top-4 h-[44vh] min-h-[320px] max-h-[44vh]'
+                    : 'top-1/2 -translate-y-1/2 h-96 max-h-[60vh]'
+            }`}
         >
             <div className="px-3 py-2 border-b border-gray-700/50 text-sm font-bold text-primary-500">
                 채팅

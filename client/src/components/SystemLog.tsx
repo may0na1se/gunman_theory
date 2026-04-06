@@ -9,6 +9,7 @@ interface SystemMessage {
 export default function SystemLog() {
     const socket = useGameStore(state => state.socket);
     const roomState = useGameStore(state => state.roomState);
+    const isRouletteLayout = roomState?.status === 'roulette_setup' || roomState?.status === 'roulette_running';
 
     const [messages, setMessages] = useState<SystemMessage[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,7 +39,13 @@ export default function SystemLog() {
     if (!roomState) return null;
 
     return (
-        <div className="fixed top-1/2 -translate-y-1/2 right-4 z-[500] flex flex-col w-80 h-96 max-h-[60vh] bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto">
+        <div
+            className={`fixed z-[500] flex flex-col w-80 bg-dark-900/40 backdrop-blur-md rounded-xl border border-gray-700/50 shadow-2xl pointer-events-auto ${
+                isRouletteLayout
+                    ? 'left-4 top-[calc(44vh+1.5rem)] h-[32vh] min-h-[220px] max-h-[32vh]'
+                    : 'right-4 top-1/2 -translate-y-1/2 h-96 max-h-[60vh]'
+            }`}
+        >
             <div className="px-3 py-2 border-b border-gray-700/50 text-sm font-bold text-yellow-400">
                 시스템 로그
             </div>

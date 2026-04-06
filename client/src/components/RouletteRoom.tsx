@@ -20,6 +20,7 @@ export default function RouletteRoom() {
     const [draftEntries, setDraftEntries] = useState<RouletteEntry[]>([]);
     const [streamFrame, setStreamFrame] = useState<string | null>(null);
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
+    const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
     useEffect(() => {
         if (!roomState?.roulette) return;
@@ -95,7 +96,23 @@ export default function RouletteRoom() {
             if (!canvas || canvas.width === 0 || canvas.height === 0) return;
 
             try {
-                const imageData = canvas.toDataURL('image/webp', 0.65);
+                let captureCanvas = captureCanvasRef.current;
+                if (!captureCanvas) {
+                    captureCanvas = document.createElement('canvas');
+                    captureCanvasRef.current = captureCanvas;
+                }
+
+                const scale = 0.55;
+                captureCanvas.width = Math.max(1, Math.floor(canvas.width * scale));
+                captureCanvas.height = Math.max(1, Math.floor(canvas.height * scale));
+
+                const context = captureCanvas.getContext('2d');
+                if (!context) return;
+
+                context.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+                context.drawImage(canvas, 0, 0, captureCanvas.width, captureCanvas.height);
+
+                const imageData = captureCanvas.toDataURL('image/webp', 0.58);
                 socket.emit('roulette_frame', {
                     imageData,
                     sessionId: currentSessionId
@@ -104,7 +121,7 @@ export default function RouletteRoom() {
             } catch (error) {
                 console.error('roulette frame capture failed', error);
             }
-        }, 180);
+        }, 90);
 
         return () => {
             window.clearInterval(interval);
@@ -147,8 +164,8 @@ export default function RouletteRoom() {
     };
 
     return (
-        <div className="min-h-screen bg-dark-900 px-4 py-10">
-            <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <div className="min-h-screen bg-dark-900 px-4 py-10 lg:pl-[22rem]">
+            <div className="mx-auto flex w-full max-w-[calc(100vw-24rem)] flex-col gap-6 lg:max-w-7xl">
                 <div className="rounded-3xl border border-gray-700 bg-dark-800/80 p-6 shadow-2xl backdrop-blur-md">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
