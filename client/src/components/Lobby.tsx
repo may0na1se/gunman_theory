@@ -177,7 +177,11 @@ export default function Lobby() {
                                                 ? '대기 중'
                                                 : room.status === 'playing'
                                                     ? `라운드 ${room.round} / 4 진행 중 · 관전 가능`
-                                                    : '결과 화면 · 관전 가능'}
+                                                    : room.status === 'finished'
+                                                        ? '결과 화면 · 관전 가능'
+                                                        : room.status === 'roulette_setup'
+                                                            ? '핀볼 준비 중 · 관전 가능'
+                                                            : '핀볼 진행 중 · 관전 가능'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">

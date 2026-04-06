@@ -4,6 +4,7 @@ import { useGameStore } from './store/useGameStore';
 import Lobby from './components/Lobby';
 import Room from './components/Room';
 import InGame from './components/InGame';
+import RouletteRoom from './components/RouletteRoom';
 import Chat from './components/Chat';
 import SystemLog from './components/SystemLog';
 import BgmController from './components/BgmController';
@@ -59,7 +60,13 @@ function App() {
         <Lobby />
       ) : (
         <>
-          {roomState.status === 'playing' || roomState.status === 'finished' ? <InGame /> : <Room />}
+          {roomState.status === 'playing' || roomState.status === 'finished' ? (
+            <InGame />
+          ) : roomState.status === 'roulette_setup' || roomState.status === 'roulette_running' ? (
+            <RouletteRoom />
+          ) : (
+            <Room />
+          )}
           {/* 어느 방이든(대기실이나 게임 플레이, 결과창) 좌측 채팅 / 우측 시스템 로그 렌더링 */}
           <Chat />
           <SystemLog />

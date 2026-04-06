@@ -58,6 +58,48 @@ function getFinalRankings(room) {
     });
 }
 
+function createRouletteEntries(rankings) {
+    return rankings.map((player, index) => ({
+        name: player.name,
+        count: index + 1,
+        rank: index + 1,
+        playerId: player.id
+    }));
+}
+
+function sanitizeRouletteEntries(entries, rankings) {
+    if (!Array.isArray(entries)) {
+        return createRouletteEntries(rankings);
+    }
+
+    const allowedPlayers = new Map(rankings.map((player, index) => [
+        player.id,
+        {
+            name: player.name,
+            rank: index + 1
+        }
+    ]));
+
+    const sanitizedEntries = entries
+        .map((entry) => {
+            const fallbackPlayer = allowedPlayers.get(entry?.playerId);
+            if (!fallbackPlayer) return null;
+
+            const name = String(entry?.name ?? fallbackPlayer.name).trim().slice(0, 12);
+            const count = Math.min(12, Math.max(1, Number(entry?.count) || fallbackPlayer.rank));
+
+            return {
+                playerId: entry.playerId,
+                rank: fallbackPlayer.rank,
+                name: name || fallbackPlayer.name,
+                count
+            };
+        })
+        .filter(Boolean);
+
+    return sanitizedEntries.length > 0 ? sanitizedEntries : createRouletteEntries(rankings);
+}
+
 function getInitialProb(room) {
     const maxInitialProb = room.players.length >= 6 ? 60 : 45;
     return Math.floor(Math.random() * (maxInitialProb - 10 + 1)) + 10;
@@ -68,7 +110,12 @@ function getSerializableRoom(room) {
     return {
         ...safeRoom,
         players: room.players.map(player => ({ ...player })),
-        spectators: room.spectators.map(spectator => ({ ...spectator }))
+        spectators: room.spectators.map(spectator => ({ ...spectator })),
+        finalRankings: room.finalRankings.map(player => ({ ...player })),
+        roulette: room.roulette ? {
+            ...room.roulette,
+            entries: room.roulette.entries.map(entry => ({ ...entry }))
+        } : null
     };
 }
 
@@ -129,6 +176,57 @@ function broadcastRooms() {
     io.emit('room_list_update', roomList);
 }
 
+function resetRoomToWaiting(room) {
+    if (room.bettingTimeout) {
+        clearTimeout(room.bettingTimeout);
+        room.bettingTimeout = null;
+    }
+    clearTurnTimeout(room);
+
+    room.status = 'waiting';
+    room.phase = 'playing';
+    room.round = 1;
+    room.pot = 0;
+    room.turnIndex = 0;
+    room.turnDirection = 1;
+    room.currentBet = 10;
+    room.winnerId = null;
+    room.bankruptCount = 0;
+    room.finalRankings = [];
+    room.roulette = null;
+
+    if (room.spectators.length > 0) {
+        const spectatorsToPromote = [...room.spectators];
+        spectatorsToPromote.forEach((spectator) => {
+            room.players.push(createPlayer(spectator.id, spectator.name, false));
+            const spectatorSocket = io.sockets.sockets.get(spectator.id);
+            if (spectatorSocket) {
+                spectatorSocket.data.isSpectator = false;
+            }
+        });
+        room.spectators = [];
+    }
+
+    room.players.forEach(p => {
+        p.ready = true;
+        p.money = 200;
+        p.prob = 0;
+        p.isAlive = true;
+        p.passive = '유지';
+        p.activeCard = null;
+        p.hasVest = false;
+        p.hasRobber = false;
+        p.hasSponsor = 0;
+        p.isMeditation = false;
+        p.hasInsurance = 0;
+        p.hasExtraTurn = false;
+        p.hasCurse = false;
+        p.maxProb = 66;
+        p.isBankrupt = false;
+        p.bankruptOrder = 0;
+    });
+}
+
 // 턴 타이머 초기화 유틸
 function clearTurnTimeout(room) {
     if (room.turnTimeout) {
@@ -163,21 +261,21 @@ function startNextTurn(room) {
         if (room.round >= 4) {
             room.status = 'finished';
 
-            // 최종 순위 집계 로직
-            const sortedPlayers = [...room.players].sort((a, b) => {
-                // 살아남은 자를 최우선으로 (돈순위 정렬)
-                if (!a.isBankrupt && !b.isBankrupt) return b.money - a.money;
-                if (!a.isBankrupt) return -1;
-                if (!b.isBankrupt) return 1;
-
-                // 둘 다 파산자면, 나중에 파산한 사람이 높은 순위 (bankruptOrder가 더 큰 사람 우선)
-                return b.bankruptOrder - a.bankruptOrder;
-            });
+            const sortedPlayers = getFinalRankings(room);
+            room.finalRankings = sortedPlayers.map((player) => ({ ...player }));
+        room.roulette = {
+            entries: createRouletteEntries(room.finalRankings),
+            seed: null,
+            startedAt: null,
+            winnerName: null,
+            sessionId: 0,
+            presenterId: null
+        };
 
             emitSystemMessage(room.id, `[최종 결과] 모든 라운드 종료! 진정한 총잡이가 가려졌습니다.`);
             emitRoomState(room.id, room);
             broadcastRooms();
-            io.to(room.id).emit('game_over', { rankings: sortedPlayers });
+            io.to(room.id).emit('game_over', { rankings: room.finalRankings });
             return;
         } else {
             // 다음 라운드를 위한 대기 상태로 전환 (베팅 금액 정하기)
@@ -397,7 +495,7 @@ io.on('connection', (socket) => {
                 id: normalizedRoomId,
                 players: [],
                 spectators: [],
-                status: 'waiting', // waiting, playing, finished
+                status: 'waiting', // waiting, playing, finished, roulette_setup, roulette_running
                 phase: 'playing', // playing, betting (베팅 금액 선정)
                 round: 1,
                 pot: 0,
@@ -405,7 +503,9 @@ io.on('connection', (socket) => {
                 turnDirection: 1,
                 currentBet: 10,
                 winnerId: null,
-                bankruptCount: 0 // 파산한 순서를 추적하기 위한 카운터
+                bankruptCount: 0, // 파산한 순서를 추적하기 위한 카운터
+                finalRankings: [],
+                roulette: null
             });
         }
 
@@ -485,6 +585,8 @@ io.on('connection', (socket) => {
                 room.turnDirection = 1;
                 room.currentBet = 10; // 1라운드 10달러 고정
                 room.bankruptCount = 0; // 초기화
+                room.finalRankings = [];
+                room.roulette = null;
 
                 room.players.forEach(p => {
                     p.money = 200; // 초기 자본 세팅
@@ -525,61 +627,125 @@ io.on('connection', (socket) => {
         const roomId = socket.data.roomId;
         if (roomId && rooms.has(roomId)) {
             const room = rooms.get(roomId);
-
-            if (room.bettingTimeout) {
-                clearTimeout(room.bettingTimeout);
-                room.bettingTimeout = null;
-            }
-            clearTurnTimeout(room);
-
-            // 방 상태 초기화
-            room.status = 'waiting';
-            room.phase = 'playing';
-            room.round = 1;
-            room.pot = 0;
-            room.turnIndex = 0;
-            room.turnDirection = 1;
-            room.currentBet = 10;
-            room.winnerId = null;
-            room.bankruptCount = 0;
-
-            if (room.spectators.length > 0) {
-                const spectatorsToPromote = [...room.spectators];
-                spectatorsToPromote.forEach((spectator) => {
-                    room.players.push(createPlayer(spectator.id, spectator.name, false));
-                    const spectatorSocket = io.sockets.sockets.get(spectator.id);
-                    if (spectatorSocket) {
-                        spectatorSocket.data.isSpectator = false;
-                    }
-                });
-                room.spectators = [];
-            }
-
-            // 플레이어 상태 초기화
-            room.players.forEach(p => {
-                p.ready = true;
-                p.money = 200;
-                p.prob = 0;
-                p.isAlive = true;
-                p.passive = '유지';
-                p.activeCard = null;
-                p.hasVest = false;
-                p.hasRobber = false;
-                p.hasSponsor = 0;
-                p.isMeditation = false;
-                p.hasInsurance = 0;
-                p.hasExtraTurn = false;
-                p.hasCurse = false;
-                p.maxProb = 66;
-                p.isBankrupt = false;
-                p.bankruptOrder = 0;
-            });
+            resetRoomToWaiting(room);
 
             console.log(`[다시하기] [${roomId}] 방 데이터가 초기화되었습니다.`);
             emitSystemMessage(roomId, '🔄 게임이 초기화되었습니다. 모두 대기실로 돌아갑니다.');
             emitRoomState(roomId, room);
             broadcastRooms();
         }
+    });
+
+    socket.on('open_roulette_setup', () => {
+        const roomId = socket.data.roomId;
+        if (!roomId || !rooms.has(roomId)) return;
+
+        const room = rooms.get(roomId);
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player?.isHost || room.status !== 'finished' || room.finalRankings.length === 0) return;
+
+        room.roulette = room.roulette ?? {
+            entries: createRouletteEntries(room.finalRankings),
+            seed: null,
+            startedAt: null,
+            winnerName: null,
+            sessionId: 0,
+            presenterId: null
+        };
+        room.roulette.entries = sanitizeRouletteEntries(room.roulette.entries, room.finalRankings);
+        room.roulette.seed = null;
+        room.roulette.startedAt = null;
+        room.roulette.winnerName = null;
+        room.roulette.presenterId = null;
+        room.status = 'roulette_setup';
+
+        emitSystemMessage(roomId, '🎱 핀볼 내기 준비가 시작되었습니다.');
+        emitRoomState(roomId, room);
+        broadcastRooms();
+    });
+
+    socket.on('update_roulette_entries', ({ entries }) => {
+        const roomId = socket.data.roomId;
+        if (!roomId || !rooms.has(roomId)) return;
+
+        const room = rooms.get(roomId);
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player?.isHost || room.status !== 'roulette_setup' || room.finalRankings.length === 0) return;
+
+        room.roulette = room.roulette ?? {
+            entries: createRouletteEntries(room.finalRankings),
+            seed: null,
+            startedAt: null,
+            winnerName: null,
+            sessionId: 0,
+            presenterId: null
+        };
+        room.roulette.entries = sanitizeRouletteEntries(entries, room.finalRankings);
+        emitRoomState(roomId, room);
+    });
+
+    socket.on('start_roulette', ({ entries } = {}) => {
+        const roomId = socket.data.roomId;
+        if (!roomId || !rooms.has(roomId)) return;
+
+        const room = rooms.get(roomId);
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player?.isHost || room.status !== 'roulette_setup' || !room.roulette) return;
+
+        room.roulette.entries = sanitizeRouletteEntries(entries ?? room.roulette.entries, room.finalRankings);
+        room.roulette.seed = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+        room.roulette.startedAt = Date.now() + 2500;
+        room.roulette.winnerName = null;
+        room.roulette.sessionId += 1;
+        room.roulette.presenterId = socket.id;
+        room.status = 'roulette_running';
+
+        emitSystemMessage(roomId, '🎱 핀볼 내기가 곧 시작됩니다. 모두 함께 지켜봐 주세요!');
+        emitRoomState(roomId, room);
+        broadcastRooms();
+    });
+
+    socket.on('roulette_finished', ({ winnerName }) => {
+        const roomId = socket.data.roomId;
+        if (!roomId || !rooms.has(roomId)) return;
+
+        const room = rooms.get(roomId);
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player?.isHost || room.status !== 'roulette_running' || !room.roulette || room.roulette.winnerName) return;
+
+        const normalizedWinnerName = String(winnerName ?? '').trim();
+        const validWinner = room.roulette.entries.find(entry => entry.name === normalizedWinnerName);
+        if (!validWinner) return;
+
+        room.roulette.winnerName = validWinner.name;
+        emitSystemMessage(roomId, `☕ 오늘의 커피 담당은 ${validWinner.name}님으로 결정됐습니다!`);
+        emitRoomState(roomId, room);
+    });
+
+    socket.on('finish_roulette', () => {
+        const roomId = socket.data.roomId;
+        if (!roomId || !rooms.has(roomId)) return;
+
+        const room = rooms.get(roomId);
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player?.isHost || room.status !== 'roulette_running' || !room.roulette?.winnerName) return;
+
+        resetRoomToWaiting(room);
+        emitSystemMessage(roomId, '🔄 핀볼 내기가 종료되어 모두 대기실로 돌아갑니다.');
+        emitRoomState(roomId, room);
+        broadcastRooms();
+    });
+
+    socket.on('roulette_frame', ({ imageData, sessionId }) => {
+        const roomId = socket.data.roomId;
+        if (!roomId || !rooms.has(roomId)) return;
+
+        const room = rooms.get(roomId);
+        if (room.status !== 'roulette_running' || !room.roulette) return;
+        if (room.roulette.presenterId !== socket.id) return;
+        if (room.roulette.sessionId !== sessionId) return;
+
+        io.to(roomId).emit('roulette_frame', { imageData, sessionId });
     });
 
     // 라운드 승자가 베팅액 지정 후 다음 라운드 시작
@@ -917,6 +1083,15 @@ io.on('connection', (socket) => {
                         } else if (disconnectedPlayerIndex > -1 && disconnectedPlayerIndex < room.turnIndex) {
                             room.turnIndex -= 1;
                         }
+                    }
+
+                    if (room.status === 'roulette_running' && room.roulette?.presenterId === socket.id) {
+                        room.status = 'roulette_setup';
+                        room.roulette.seed = null;
+                        room.roulette.startedAt = null;
+                        room.roulette.presenterId = null;
+                        room.roulette.winnerName = null;
+                        emitSystemMessage(roomId, `🎱 핀볼 진행 중 방장이 나가서 설정 단계로 돌아갑니다.`);
                     }
                 }
 

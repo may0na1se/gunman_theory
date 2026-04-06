@@ -28,6 +28,22 @@ export interface Spectator {
     name: string;
 }
 
+export interface RouletteEntry {
+    name: string;
+    count: number;
+    rank: number;
+    playerId: string;
+}
+
+export interface RouletteState {
+    entries: RouletteEntry[];
+    seed: string | null;
+    startedAt: number | null;
+    winnerName: string | null;
+    sessionId: number;
+    presenterId: string | null;
+}
+
 export type ActiveCardType =
     | '강도' | '방탄복' | '도주' | '역주행'
     | '후원자 A' | '후원자 B' | '명상' | '탄약병'
@@ -55,7 +71,7 @@ export interface RoomState {
     id: string;
     players: Player[];
     spectators: Spectator[];
-    status: 'waiting' | 'playing' | 'finished';
+    status: 'waiting' | 'playing' | 'finished' | 'roulette_setup' | 'roulette_running';
     phase: 'playing' | 'betting'; // 새로 추가된 페이즈
     round: number;
     pot: number;
@@ -63,6 +79,8 @@ export interface RoomState {
     turnDirection: 1 | -1;
     currentBet: number;
     winnerId: string | null; // 라운드 우승자 ID
+    finalRankings: Player[];
+    roulette: RouletteState | null;
 }
 
 export interface RoomListInfo {

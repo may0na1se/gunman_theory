@@ -229,6 +229,7 @@ export default function InGame() {
     const myPlayer = roomState.players.find(p => p.id === socket?.id) ?? null;
     const mySpectator = roomState.spectators.find(s => s.id === socket?.id) ?? null;
     const isMyTurn = currentTurnPlayer?.id === socket?.id;
+    const displayedRankings = rankings ?? roomState.finalRankings;
 
     useEffect(() => {
         if (!isMyTurn) {
@@ -724,7 +725,7 @@ export default function InGame() {
 
             {/* 최종 게임 종료 (4라운드 끝) 순위표 모달 */}
             <AnimatePresence>
-                {roomState.status === 'finished' && rankings && (
+                {roomState.status === 'finished' && displayedRankings.length > 0 && (
                     <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                         className="fixed inset-0 z-[300] bg-dark-900/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 overflow-y-auto"
@@ -733,7 +734,7 @@ export default function InGame() {
                         <p className="text-gray-400 mb-8 text-xl font-bold">4라운드 종료! 진정한 총잡이는 누구인가?</p>
 
                         <div className="flex flex-col gap-4 w-full max-w-2xl">
-                            {rankings.map((p, idx) => {
+                            {displayedRankings.map((p, idx) => {
                                 let rankDisplay = `${idx + 1}등`;
                                 let bgColor = 'bg-dark-800';
                                 let textColor = 'text-gray-300';
@@ -784,16 +785,28 @@ export default function InGame() {
                         </div>
 
                         {myPlayer?.isHost ? (
-                            <button
-                                onClick={() => {
-                                    if (socket) {
-                                        socket.emit('play_again');
-                                    }
-                                }}
-                                className="mt-12 bg-primary-500 hover:bg-yellow-400 text-dark-900 text-xl font-black py-4 px-12 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.4)] transition-all transform hover:scale-105"
-                            >
-                                다시하기 (새 게임 파기)
-                            </button>
+                            <div className="mt-12 flex flex-col sm:flex-row gap-4">
+                                <button
+                                    onClick={() => {
+                                        if (socket) {
+                                            socket.emit('play_again');
+                                        }
+                                    }}
+                                    className="bg-primary-500 hover:bg-yellow-400 text-dark-900 text-xl font-black py-4 px-10 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.4)] transition-all transform hover:scale-105"
+                                >
+                                    다시하기
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (socket) {
+                                            socket.emit('open_roulette_setup');
+                                        }
+                                    }}
+                                    className="bg-sky-500 hover:bg-sky-400 text-dark-900 text-xl font-black py-4 px-10 rounded-full shadow-[0_0_20px_rgba(14,165,233,0.35)] transition-all transform hover:scale-105"
+                                >
+                                    핀볼 돌리기
+                                </button>
+                            </div>
                         ) : (
                             <div className="mt-12 text-center">
                                 <p className="text-xl text-gray-400 font-bold mb-2">방장이 다음 게임을 준비 중입니다...</p>
