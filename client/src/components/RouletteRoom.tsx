@@ -54,6 +54,7 @@ export default function RouletteRoom() {
     const isRunning = roomState.status === 'roulette_running';
     const isPresenter = roomState.roulette.presenterId === socket?.id;
     const canStart = draftEntries.length > 0 && draftEntries.every((entry) => entry.name.trim() && entry.count >= 1);
+    const hasWinner = Boolean(roomState.roulette.winnerName);
 
     const iframeSrc = useMemo(() => {
         if (!isRunning || !roomState.roulette?.seed || !roomState.roulette?.startedAt) return '';
@@ -327,16 +328,16 @@ export default function RouletteRoom() {
                                             key={`${roomState.roulette.sessionId}-${roomState.roulette.seed}-presenter`}
                                             src={iframeSrc}
                                             title="roulette"
-                                            className="h-[560px] w-full"
+                                            className="h-[500px] w-full"
                                         />
                                     ) : streamFrame ? (
                                         <img
                                             src={streamFrame}
                                             alt="roulette live view"
-                                            className="h-[560px] w-full object-contain"
+                                            className="h-[500px] w-full object-contain"
                                         />
                                     ) : (
-                                        <div className="flex h-[560px] items-center justify-center text-lg font-bold text-gray-500">
+                                        <div className="flex h-[500px] items-center justify-center text-lg font-bold text-gray-500">
                                             {isPresenter ? '핀볼 화면을 준비 중입니다...' : '방장이 핀볼 화면을 송출하는 중입니다...'}
                                         </div>
                                     )}
@@ -344,7 +345,7 @@ export default function RouletteRoom() {
 
                                 {roomState.roulette.winnerName ? (
                                     <div className="mt-6 rounded-3xl border border-emerald-500/40 bg-emerald-900/20 px-6 py-5">
-                                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                        <div className="flex flex-col gap-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="rounded-full bg-emerald-500/20 p-3 text-emerald-300">
                                                     <Coffee size={24} />
@@ -356,14 +357,6 @@ export default function RouletteRoom() {
                                                     </div>
                                                 </div>
                                             </div>
-                                            {isHost && (
-                                                <button
-                                                    onClick={handleFinishRoulette}
-                                                    className="rounded-2xl bg-primary-500 px-6 py-4 text-lg font-black text-dark-900 transition hover:bg-yellow-400"
-                                                >
-                                                    대기실로 돌아가기
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -377,6 +370,16 @@ export default function RouletteRoom() {
                 </div>
                 </div>
             </div>
+            {isRunning && hasWinner && isHost && (
+                <div className="pointer-events-none absolute bottom-8 left-8 z-30">
+                    <button
+                        onClick={handleFinishRoulette}
+                        className="pointer-events-auto rounded-2xl bg-primary-500 px-6 py-4 text-lg font-black text-dark-900 shadow-[0_0_20px_rgba(234,179,8,0.25)] transition hover:bg-yellow-400"
+                    >
+                        대기실로 돌아가기
+                    </button>
+                </div>
+            )}
         </div>
         </FixedStage>
     );

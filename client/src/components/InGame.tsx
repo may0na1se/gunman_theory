@@ -476,9 +476,7 @@ export default function InGame() {
                 </div>
 
                 {/* 중앙 Pot (판돈) 및 카드 연출 영역 */}
-                <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center gap-12 pointer-events-none w-full max-w-4xl">
-
-                    <div className="flex-1" />
+                <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-center pointer-events-none">
 
                     {/* 중앙 Pot (판돈) - 애니메이션 부여 */}
                     <motion.div
@@ -497,38 +495,38 @@ export default function InGame() {
                         </div>
                     </motion.div>
 
-                    {/* 방금 사용된 카드 (우측에 띄움) */}
-                    <div className="flex-1 flex justify-start pl-8 relative h-48">
-                        <AnimatePresence>
-                            {lastUsedCard && (
-                                <motion.div
-                                    key={lastUsedCard.timestamp}
-                                    initial={{ rotateY: 180, scale: 0.5, opacity: 0, x: -50 }}
-                                    animate={{ rotateY: 0, scale: 1, opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, scale: 0.8, y: 50 }}
-                                    transition={{ duration: 0.6, type: "spring" }}
-                                    className="flex items-center gap-4 bg-dark-800/90 p-4 rounded-xl shadow-2xl border border-gray-600"
-                                >
-                                    <div
-                                        className="w-24 h-36 rounded-md bg-cover bg-center shadow-lg border-2 border-primary-500"
-                                        style={{ backgroundImage: `url(${aceOfSpades})` }}
-                                    />
-                                    <div className="flex flex-col max-w-[200px]">
-                                        <span className="text-gray-400 text-xs font-bold mb-1">{lastUsedCard.playerName}님의 사용 카드</span>
-                                        <span className="text-2xl font-black text-white mb-2 text-yellow-500">{lastUsedCard.cardName}</span>
-                                        <span className="text-sm text-gray-300 leading-snug">
-                                            {CARD_INFO[lastUsedCard.cardName]?.desc || ''}
-                                        </span>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                </div>
 
+                {/* 방금 사용된 카드 (판돈 오른쪽 고정) */}
+                <div className="absolute top-[45%] left-1/2 z-20 pointer-events-none" style={{ transform: 'translate(180px, -50%)' }}>
+                    <AnimatePresence>
+                        {lastUsedCard && (
+                            <motion.div
+                                key={lastUsedCard.timestamp}
+                                initial={{ rotateY: 180, scale: 0.5, opacity: 0, x: -50 }}
+                                animate={{ rotateY: 0, scale: 1, opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                                transition={{ duration: 0.6, type: "spring" }}
+                                className="flex items-center gap-4 bg-dark-800/90 p-4 rounded-xl shadow-2xl border border-gray-600"
+                            >
+                                <div
+                                    className="w-24 h-36 rounded-md bg-cover bg-center shadow-lg border-2 border-primary-500"
+                                    style={{ backgroundImage: `url(${aceOfSpades})` }}
+                                />
+                                <div className="flex flex-col max-w-[220px]">
+                                    <span className="text-gray-400 text-xs font-bold mb-1">{lastUsedCard.playerName}님의 사용 카드</span>
+                                    <span className="text-2xl font-black text-white mb-2 text-yellow-500">{lastUsedCard.cardName}</span>
+                                    <span className="text-sm text-gray-300 leading-snug">
+                                        {CARD_INFO[lastUsedCard.cardName]?.desc || ''}
+                                    </span>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Bottom 4 Players (idx 4~7) */}
-                <div className="flex justify-center gap-4 w-full mt-auto translate-y-24">
+                <div className="flex justify-center gap-4 w-full mt-auto translate-y-36">
                     {roomState.players.slice(4, 8).map((player: Player, jdx: number) =>
                         renderPlayerCard(player, jdx + 4) // 원본 배열 인덱스 유지
                     )}
@@ -626,11 +624,22 @@ export default function InGame() {
 
                                 {/* 액티브 카드 정보 영역 */}
                                 <div className="flex h-full flex-col justify-between w-[320px] min-w-[320px] max-w-[320px] bg-dark-900 border border-blue-900/50 p-3 rounded-xl shadow-inner relative">
+                                    {myCard && cardMeta && isMyTurn && (
+                                        <div className="absolute top-3 right-3 z-10">
+                                            <button
+                                                onClick={() => handleUseCard(myCard, cardMeta.needTarget)}
+                                                className={`text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg transition-colors flex items-center justify-center gap-2
+                                                ${activeCardMode === myCard ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-500'}`}
+                                            >
+                                                {activeCardMode === myCard ? <><AlertTriangle size={14} />선택 취소</> : cardMeta.needTarget ? <><Target size={14} />타겟 지정</> : '카드 사용'}
+                                            </button>
+                                        </div>
+                                    )}
                                     <div className="min-h-0">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-blue-400 text-sm font-bold">액티브 카드</span>
                                         </div>
-                                        <div className="text-2xl font-black text-white mb-3 flex flex-wrap items-center gap-2 break-keep">
+                                        <div className="text-2xl font-black text-white mb-3 flex flex-wrap items-center gap-2 break-keep pr-28">
                                             <span className="break-keep">{myCard || '카드 없음'}</span>
                                             {cardMeta?.cost && (
                                                 <span className="text-red-500 text-sm font-bold bg-red-900/30 px-2 py-1 rounded-md border border-red-900/50 transform -translate-y-0.5">
@@ -646,19 +655,6 @@ export default function InGame() {
                                             </p>
                                         </div>
                                     </div>
-
-                                    {/* 카드 사용 버튼 (우측 하단으로 이동, 큼지막하게) */}
-                                    {myCard && cardMeta && isMyTurn && (
-                                        <div className="flex justify-end mt-3 shrink-0">
-                                            <button
-                                                onClick={() => handleUseCard(myCard, cardMeta.needTarget)}
-                                                className={`text-white text-sm font-bold py-2 px-6 rounded-lg shadow-lg transition-colors flex items-center justify-center gap-2 w-full md:w-auto
-                                                ${activeCardMode === myCard ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-500'}`}
-                                            >
-                                                {activeCardMode === myCard ? <><AlertTriangle size={16} />선택 취소</> : cardMeta.needTarget ? <><Target size={16} /> 타겟 지정</> : '이 카드 사용하기'}
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             </motion.div>
 
